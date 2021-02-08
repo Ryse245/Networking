@@ -42,8 +42,7 @@
 enum GameMessages
 {
 	ID_GAME_MESSAGE_1 = ID_USER_PACKET_ENUM + 1,
-	ID_TEXT_SEND,
-	ID_TEXT_RECIEVE
+	ID_TEXT_CHAT
 };
 
 #pragma pack(push)
@@ -70,9 +69,9 @@ void handleInputLocal(GameState* state, char* msg, bool* init)
 {
 	if (*init!=true)
 	{
-		printf("Enter username and hit 'enter'");
+		printf("Enter message and hit 'enter'");
 		int test = scanf("%s",msg);	//Gotta love warnings
-		printf("Your username is %s",msg);
+		//printf("Your username is %s \n",msg);	//SET USERNAME ON CLIENT, SEND USERNAME + TIME + MSG ALL TO SERVER
 		*init = true;
 	}
 	else
@@ -90,16 +89,27 @@ void handleRemoteInput(GameState* state, bool* connect)
 	//recieve packets, merge with local input
 	//for (packet = peer->Receive(); packet; peer->DeallocatePacket(packet), packet = peer->Receive())
 	while (packet = peer->Receive())
-	{
-		RakNet::MessageID msg = packet->data[0];
-		/*if (msg == ID_TIMESTAMP)
+	{	
+		//FOR SERVER READING IN MESSAGE
+		RakNet::Time sentTime = 0;
+		RakNet::BitStream bsIn(packet->data, packet->length, false);
+		RakNet::MessageID msg = 0;//packet->data[0];
+		//RakNet::RakString rs;
+		//bsIn.IgnoreBytes(sizeof(RakNet::MessageID));
+		bsIn.Read(msg);
+
+		if (msg == ID_TIMESTAMP)	//FOR SERVER READING IN MESSAGE
 		{
 			//handle time
-			//1. Bitstream
-			//2. Skip msg byte
+			//1. Bitstream DONE ABOVE
+			//2. Skip msg byte DONE ABOVE
 			//3. Read time
+			bsIn.Read(sentTime);
 			//4. Read new msg byte
-		}*/
+			bsIn.Read(msg);
+		}
+
+		//handle actual message data here
 		switch (msg)
 		{
 		case ID_REMOTE_DISCONNECTION_NOTIFICATION:
@@ -115,17 +125,21 @@ void handleRemoteInput(GameState* state, bool* connect)
 		{
 			printf("Our connection request has been accepted.\n");
 
-			*connect = true;
 			// Use a BitStream to write a custom user message
 			// Bitstreams are easier to use than sending casted structures, and handle endian swapping automatically
 			RakNet::BitStream bsOut;
 			//bsOut.Write((RakNet::MessageID)ID_TIMESTAMP);
 			//bsOut.Write((RakNet::Time)RakNet::GetTime());
 			
+			char test[] = { "Hello World" };
+
 			bsOut.Write((RakNet::MessageID)ID_GAME_MESSAGE_1);
-			bsOut.Write("Hello world");
-			peer->Send(&bsOut, HIGH_PRIORITY, RELIABLE_ORDERED, 0, packet->systemAddress, false);
-			
+			bsOut.Write(test);
+			peer->Send(&bsOut, HIGH_PRIORITY, RELIABLE_ORDERED, 0, packet->systemAddress, false);	//Last variable is broadcast, send to all AND, if you have a system address AND TRUE, it'll send to all EXCEPT the address
+			//peer->Send(&bsOut, HIGH_PRIORITY, RELIABLE_ORDERED, 0, packet->systemAddress, true);	//For server, packet systemAddress should be replaced with sender IP
+			//peer->Send(&bsOut, HIGH_PRIORITY, RELIABLE_ORDERED, 0, RAKNET::UNASSIGNED_SYSTEM_ADRESS, true);	//For server, send to all
+
+			*connect = true;
 			/*
 			GameMessage1 msg = {
 				//ID_TIMESTAMP,
@@ -137,6 +151,9 @@ void handleRemoteInput(GameState* state, bool* connect)
 			*/
 		}
 		break;
+		case ID_CONNECTION_ATTEMPT_FAILED:
+			printf("Failed to connect.\n");
+			break;
 		case ID_NEW_INCOMING_CONNECTION:
 			printf("A connection is incoming.\n");
 			break;
@@ -161,14 +178,14 @@ void handleRemoteInput(GameState* state, bool* connect)
 			printf("%s\n", rs.C_String());
 		}
 		break;
-		case ID_TEXT_RECIEVE:
+		case ID_TEXT_CHAT:
 		{
 			printf("Text message recieved \n");
 			break;
 		}
 
 		default:
-			printf("Message with identifier %i has arrived.\n", packet->data[0]);
+			printf("Message with identifier %i has arrived.\n", msg);
 			break;
 		}
 		//Done with curent packet
@@ -184,17 +201,18 @@ void handleUpdate(GameState* state)
 void handleOutputRemote(const GameState* state, char* message)
 {
 	//package and send state changes to server
-
+	
 	RakNet::RakPeerInterface* peer = state->peer;
-	RakNet::Packet* packet;
-	packet = peer->Receive();
+	//RakNet::Packet* packet;
+
 	RakNet::BitStream bsOut;
 
-	bsOut.Write((RakNet::MessageID)ID_GAME_MESSAGE_1);
+	bsOut.Write((RakNet::MessageID)ID_TEXT_CHAT);
 	bsOut.Write(message);
-	peer->Send(&bsOut, HIGH_PRIORITY, RELIABLE_ORDERED, 0, packet->systemAddress, false);
+	peer->Send(&bsOut, HIGH_PRIORITY, RELIABLE_ORDERED, 0, peer->GetGUIDFromIndex(0), false);	//JANK
 
 	memset(message, 0, sizeof message);
+	
 }
 
 void handleOutputLocal(const GameState* state)
@@ -229,7 +247,8 @@ int main(void)
 		//update
 		handleUpdate(gs);
 		//package and send
-		if (strlen(message) > 0)
+		
+		if (strlen(message) > 0 && connected==true)
 		{
 			handleOutputRemote(gs, message);
 		}

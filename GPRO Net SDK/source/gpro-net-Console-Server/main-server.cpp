@@ -42,7 +42,8 @@
 
 enum GameMessages
 {
-	ID_GAME_MESSAGE_1 = ID_USER_PACKET_ENUM + 1
+	ID_GAME_MESSAGE_1 = ID_USER_PACKET_ENUM + 1,
+	ID_TEXT_CHAT
 };
 
 int main(void)
@@ -58,22 +59,32 @@ int main(void)
 
 	
 	printf("Starting the server.\n");
+	FILE* logfile = fopen("textlog.txt", "w+");
 	// We need to let the server accept incoming connections from the clients
 
 	while (1)
 	{
 		for (packet = peer->Receive(); packet; peer->DeallocatePacket(packet), packet = peer->Receive())
 		{
-			RakNet::MessageID msg = packet->data[0];
-			if (msg == ID_TIMESTAMP)
+			//FOR SERVER READING IN MESSAGE
+			RakNet::Time sentTime = 0;
+			RakNet::BitStream bsIn(packet->data, packet->length, false);
+			RakNet::MessageID msg = 0;//packet->data[0];
+			//RakNet::RakString rs;
+			//bsIn.IgnoreBytes(sizeof(RakNet::MessageID));
+			bsIn.Read(msg);
+
+			if (msg == ID_TIMESTAMP)	//FOR SERVER READING IN MESSAGE
 			{
 				//handle time
-				//1. Bitstream
-				//2. Skip msg byte
+				//1. Bitstream DONE ABOVE
+				//2. Skip msg byte DONE ABOVE
 				//3. Read time
+				bsIn.Read(sentTime);
 				//4. Read new msg byte
+				bsIn.Read(msg);
 			}
-			switch (msg)
+			switch(msg)
 			{
 			case ID_REMOTE_DISCONNECTION_NOTIFICATION:
 				printf("Another client has disconnected.\n");
@@ -120,7 +131,24 @@ int main(void)
 				printf("%s\n", rs.C_String());
 			}
 			break;
+			case ID_TEXT_CHAT:
+			{
+				//printf("Text message recieved \n");
+				RakNet::RakString rs;
+				RakNet::BitStream bsIn(packet->data, packet->length, false);
+				bsIn.IgnoreBytes(sizeof(RakNet::MessageID));
+				bsIn.Read(rs);
+				printf("%s\n", rs.C_String());	
 
+				RakNet::BitStream bsOut;
+				bsOut.Write((RakNet::MessageID)ID_TEXT_CHAT);
+				bsOut.Write(rs);
+				peer->Send(&bsOut, HIGH_PRIORITY, RELIABLE_ORDERED, 0, RakNet::UNASSIGNED_RAKNET_GUID, true);	//For server, send to all
+				//int a = fputs(rs.C_String(), logfile);
+				//printf("%i",a);
+				//fclose(logfile);
+				break;
+			}
 			default:
 				printf("Message with identifier %i has arrived.\n", packet->data[0]);
 				break;
