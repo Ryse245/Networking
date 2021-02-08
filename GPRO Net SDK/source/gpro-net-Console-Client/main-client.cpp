@@ -41,7 +41,9 @@
 
 enum GameMessages
 {
-	ID_GAME_MESSAGE_1 = ID_USER_PACKET_ENUM + 1
+	ID_GAME_MESSAGE_1 = ID_USER_PACKET_ENUM + 1,
+	ID_TEXT_SEND,
+	ID_TEXT_RECIEVE
 };
 
 #pragma pack(push)
@@ -64,12 +66,23 @@ struct GameState
 	RakNet::RakPeerInterface* peer;
 };
 
-void handleInputLocal(GameState* state)
+void handleInputLocal(GameState* state, char* msg, bool* init)
 {
+	if (*init!=true)
+	{
+		printf("Enter username and hit 'enter'");
+		int test = scanf("%s",msg);	//Gotta love warnings
+		printf("Your username is %s",msg);
+		*init = true;
+	}
+	else
+	{
+
+	}
 	//Keyboard, controller, etc
 }
 
-void handleRemoteInput(GameState* state)
+void handleRemoteInput(GameState* state, bool* connect)
 {
 	RakNet::RakPeerInterface* peer = state->peer;
 	RakNet::Packet* packet;
@@ -102,6 +115,7 @@ void handleRemoteInput(GameState* state)
 		{
 			printf("Our connection request has been accepted.\n");
 
+			*connect = true;
 			// Use a BitStream to write a custom user message
 			// Bitstreams are easier to use than sending casted structures, and handle endian swapping automatically
 			RakNet::BitStream bsOut;
@@ -131,9 +145,11 @@ void handleRemoteInput(GameState* state)
 			break;
 		case ID_DISCONNECTION_NOTIFICATION:
 			printf("We have been disconnected.\n");
+			*connect = false;
 			break;
 		case ID_CONNECTION_LOST:
 			printf("Connection lost.\n");
+			*connect = false;
 			break;
 
 		case ID_GAME_MESSAGE_1:
@@ -145,6 +161,11 @@ void handleRemoteInput(GameState* state)
 			printf("%s\n", rs.C_String());
 		}
 		break;
+		case ID_TEXT_RECIEVE:
+		{
+			printf("Text message recieved \n");
+			break;
+		}
 
 		default:
 			printf("Message with identifier %i has arrived.\n", packet->data[0]);
@@ -160,9 +181,20 @@ void handleUpdate(GameState* state)
 	//figure out what the state actually is
 }
 
-void handleOutputRemote(const GameState* state)
+void handleOutputRemote(const GameState* state, char* message)
 {
 	//package and send state changes to server
+
+	RakNet::RakPeerInterface* peer = state->peer;
+	RakNet::Packet* packet;
+	packet = peer->Receive();
+	RakNet::BitStream bsOut;
+
+	bsOut.Write((RakNet::MessageID)ID_GAME_MESSAGE_1);
+	bsOut.Write(message);
+	peer->Send(&bsOut, HIGH_PRIORITY, RELIABLE_ORDERED, 0, packet->systemAddress, false);
+
+	memset(message, 0, sizeof message);
 }
 
 void handleOutputLocal(const GameState* state)
@@ -177,6 +209,10 @@ int main(void)
 
 	GameState gs[1] = {0};
 
+	char message[512];
+	bool initialized = false;
+	bool connected = false;
+
 	gs->peer = RakNet::RakPeerInterface::GetInstance();
 	RakNet::SocketDescriptor sd;
 	gs->peer->Startup(1, &sd, 1);
@@ -187,13 +223,16 @@ int main(void)
 	while (1)
 	{
 		//input
-		handleInputLocal(gs);
+		handleInputLocal(gs, message, &initialized);
 		//recieve and merge
-		handleRemoteInput(gs);
+		handleRemoteInput(gs, &connected);
 		//update
 		handleUpdate(gs);
 		//package and send
-		handleOutputRemote(gs);
+		if (strlen(message) > 0)
+		{
+			handleOutputRemote(gs, message);
+		}
 		//output
 		handleOutputLocal(gs);
 	}
