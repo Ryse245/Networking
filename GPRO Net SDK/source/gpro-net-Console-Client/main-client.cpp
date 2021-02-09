@@ -69,14 +69,15 @@ void handleInputLocal(GameState* state, char* msg, bool* init)
 {
 	if (*init!=true)
 	{
-		printf("Enter message and hit 'enter'");
+		printf("Enter username and hit 'enter' to log on \n");
 		int test = scanf("%s",msg);	//Gotta love warnings
-		//printf("Your username is %s \n",msg);	//SET USERNAME ON CLIENT, SEND USERNAME + TIME + MSG ALL TO SERVER
+		//printf("Your username is %s \n",msg);	//SET USERNAME ON SERVER, SEND TIME + MSG TO SERVER
 		*init = true;
 	}
 	else
 	{
-
+		printf("Type message\n");
+		int test = scanf("%s", msg);	//Gotta love warnings
 	}
 	//Keyboard, controller, etc
 }
@@ -181,6 +182,11 @@ void handleRemoteInput(GameState* state, bool* connect)
 		case ID_TEXT_CHAT:
 		{
 			printf("Text message recieved \n");
+			RakNet::RakString rs;
+			RakNet::BitStream bsIn(packet->data, packet->length, false);
+			bsIn.IgnoreBytes(sizeof(RakNet::MessageID));
+			bsIn.Read(rs);
+			printf("%s\n", rs.C_String());
 			break;
 		}
 
@@ -223,7 +229,7 @@ void handleOutputLocal(const GameState* state)
 int main(void)
 {
 	const unsigned short SERVER_PORT = 7777;
-	const char SERVER_IP[] = "172.16.2.186";	//get fron VDI
+	const char SERVER_IP[] = "172.16.2.57";	//get fron VDI
 
 	GameState gs[1] = {0};
 
@@ -248,7 +254,7 @@ int main(void)
 		handleUpdate(gs);
 		//package and send
 		
-		if (strlen(message) > 0 && connected==true)
+		if (connected==true)
 		{
 			handleOutputRemote(gs, message);
 		}

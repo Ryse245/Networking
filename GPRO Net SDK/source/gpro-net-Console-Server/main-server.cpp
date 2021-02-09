@@ -57,9 +57,12 @@ int main(void)
 	peer->Startup(MAX_CLIENTS, &sd, 1);
 	peer->SetMaximumIncomingConnections(MAX_CLIENTS);
 
+	RakNet::SystemAddress clientAddresses[10];
+	RakNet::RakString usernames[10];
 	
 	printf("Starting the server.\n");
-	FILE* logfile = fopen("textlog.txt", "w+");
+	//fputs("HaHaPenis", logfile);
+	//fclose(logfile);
 	// We need to let the server accept incoming connections from the clients
 
 	while (1)
@@ -138,15 +141,30 @@ int main(void)
 				RakNet::BitStream bsIn(packet->data, packet->length, false);
 				bsIn.IgnoreBytes(sizeof(RakNet::MessageID));
 				bsIn.Read(rs);
-				printf("%s\n", rs.C_String());	
+				//printf("%s\n", rs.C_String());
+				for (int i = 0; i < MAX_CLIENTS; i++)
+				{
+					if (packet->systemAddress == clientAddresses[i])
+					{
+						RakNet::BitStream bsOut;
+						bsOut.Write((RakNet::MessageID)ID_TEXT_CHAT);
+						bsOut.Write(rs);
+						peer->Send(&bsOut, HIGH_PRIORITY, RELIABLE_ORDERED, 0, RakNet::UNASSIGNED_RAKNET_GUID, true);
+						FILE* logfile = fopen("Z:\\textlog.txt", "a");	//For server, send to all
+						rs.AppendBytes("\n", sizeof("\n"));
+						int a = fputs(rs.C_String(), logfile);
+						fclose(logfile);
+					}
+					else if (packet->systemAddress != clientAddresses[i] && clientAddresses[i]==RakNet::UNASSIGNED_SYSTEM_ADDRESS )
+					{
+						clientAddresses[i] = packet->systemAddress;
+						usernames[i] = rs;
+						printf("%s has joined server", usernames[i].C_String());
+						break;
+					}
+				}
 
-				RakNet::BitStream bsOut;
-				bsOut.Write((RakNet::MessageID)ID_TEXT_CHAT);
-				bsOut.Write(rs);
-				peer->Send(&bsOut, HIGH_PRIORITY, RELIABLE_ORDERED, 0, RakNet::UNASSIGNED_RAKNET_GUID, true);	//For server, send to all
-				//int a = fputs(rs.C_String(), logfile);
 				//printf("%i",a);
-				//fclose(logfile);
 				break;
 			}
 			default:
