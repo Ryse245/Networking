@@ -25,6 +25,12 @@
 #ifndef _GPRO_NET_H_
 #define _GPRO_NET_H_
 
+enum GameMessages
+{
+	ID_GAME_MESSAGE_1 = 135,
+	ID_TEXT_CHAT,
+	ID_USERNAMES_REQUEST
+};
 
 
 #endif	// !_GPRO_NET_H_

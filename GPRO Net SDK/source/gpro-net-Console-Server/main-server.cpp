@@ -39,13 +39,13 @@
 
 //#define MAX_CLIENTS 10
 //#define SERVER_PORT 60000
-
+/*
 enum GameMessages
 {
 	ID_GAME_MESSAGE_1 = ID_USER_PACKET_ENUM + 1,
 	ID_TEXT_CHAT
 };
-
+*/
 int main(void)
 {
 	const unsigned short MAX_CLIENTS = 10;
@@ -108,7 +108,7 @@ int main(void)
 				bsOut.Write((RakNet::MessageID)ID_TIMESTAMP);
 				bsOut.Write((RakNet::Time)RakNet::GetTime());
 				bsOut.Write((RakNet::MessageID)ID_GAME_MESSAGE_1);
-				bsOut.Write("Hello world");
+				bsOut.Write("Hello world\n");
 				peer->Send(&bsOut, HIGH_PRIORITY, RELIABLE_ORDERED, 0, packet->systemAddress, false);
 			}
 			break;
@@ -149,22 +149,45 @@ int main(void)
 						RakNet::BitStream bsOut;
 						bsOut.Write((RakNet::MessageID)ID_TEXT_CHAT);
 						bsOut.Write(rs);
-						peer->Send(&bsOut, HIGH_PRIORITY, RELIABLE_ORDERED, 0, RakNet::UNASSIGNED_RAKNET_GUID, true);
+						peer->Send(&bsOut, HIGH_PRIORITY, RELIABLE_ORDERED, 0, packet->systemAddress, true);
 						FILE* logfile = fopen("Z:\\textlog.txt", "a");	//For server, send to all
-						rs.AppendBytes("\n", sizeof("\n"));
+						//rs.AppendBytes("\n", sizeof("\n"));
 						int a = fputs(rs.C_String(), logfile);
 						fclose(logfile);
+						break;
 					}
 					else if (packet->systemAddress != clientAddresses[i] && clientAddresses[i]==RakNet::UNASSIGNED_SYSTEM_ADDRESS )
 					{
 						clientAddresses[i] = packet->systemAddress;
 						usernames[i] = rs;
-						printf("%s has joined server", usernames[i].C_String());
+						printf("%s has joined server\n", usernames[i].C_String()); 
+						RakNet::BitStream bsOut;
+						RakNet::RakString newUser = RakNet::RakString("%s has joined server\n", usernames[i].C_String());
+						bsOut.Write((RakNet::MessageID)ID_TEXT_CHAT);
+						bsOut.Write(newUser);
+						peer->Send(&bsOut, HIGH_PRIORITY, RELIABLE_ORDERED, 0, RakNet::UNASSIGNED_RAKNET_GUID, true);
 						break;
 					}
 				}
 
 				//printf("%i",a);
+				break;
+			}
+			case ID_USERNAMES_REQUEST:
+			{
+				RakNet::RakString userNameList = "Users: \n";
+				RakNet::BitStream bsOut;
+				for (int count = 0; count < MAX_CLIENTS; count++)
+				{
+					if (usernames[count] != &RakNet::RakString().emptyString)
+					{
+						userNameList.AppendBytes(usernames[count].C_String(), sizeof(usernames[count]));
+						userNameList.AppendBytes("\n", sizeof("\n"));
+					}
+				}
+				bsOut.Write((RakNet::MessageID)ID_USERNAMES_REQUEST);
+				bsOut.Write(userNameList);
+				peer->Send(&bsOut, HIGH_PRIORITY, RELIABLE_ORDERED, 0, packet->systemAddress, false);
 				break;
 			}
 			default:

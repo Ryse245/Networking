@@ -39,11 +39,6 @@
 
 //#define SERVER_PORT 60000
 
-enum GameMessages
-{
-	ID_GAME_MESSAGE_1 = ID_USER_PACKET_ENUM + 1,
-	ID_TEXT_CHAT
-};
 
 #pragma pack(push)
 #pragma pack(1)
@@ -70,14 +65,14 @@ void handleInputLocal(GameState* state, char* msg, bool* init)
 	if (*init!=true)
 	{
 		printf("Enter username and hit 'enter' to log on \n");
-		int test = scanf("%s",msg);	//Gotta love warnings
+		fgets(msg, 512, stdin);
 		//printf("Your username is %s \n",msg);	//SET USERNAME ON SERVER, SEND TIME + MSG TO SERVER
 		*init = true;
 	}
 	else
 	{
 		printf("Type message\n");
-		int test = scanf("%s", msg);	//Gotta love warnings
+		fgets(msg, 512, stdin);
 	}
 	//Keyboard, controller, etc
 }
@@ -189,6 +184,15 @@ void handleRemoteInput(GameState* state, bool* connect)
 			printf("%s\n", rs.C_String());
 			break;
 		}
+		case ID_USERNAMES_REQUEST:
+		{ 
+			RakNet::RakString rs;
+			RakNet::BitStream bsIn(packet->data, packet->length, false);
+			bsIn.IgnoreBytes(sizeof(RakNet::MessageID));
+			bsIn.Read(rs);
+			printf("%s", rs.C_String());
+			break;
+		}
 
 		default:
 			printf("Message with identifier %i has arrived.\n", msg);
@@ -209,15 +213,25 @@ void handleOutputRemote(const GameState* state, char* message)
 	//package and send state changes to server
 	
 	RakNet::RakPeerInterface* peer = state->peer;
-	//RakNet::Packet* packet;
-
 	RakNet::BitStream bsOut;
 
-	bsOut.Write((RakNet::MessageID)ID_TEXT_CHAT);
-	bsOut.Write(message);
-	peer->Send(&bsOut, HIGH_PRIORITY, RELIABLE_ORDERED, 0, peer->GetGUIDFromIndex(0), false);	//JANK
+	if (strcmp(message,"/getUsers\n")==0)
+	{
+		//send request for all usernames
+		bsOut.Write((RakNet::MessageID)ID_USERNAMES_REQUEST);
+		peer->Send(&bsOut, HIGH_PRIORITY, RELIABLE_ORDERED, 0, peer->GetGUIDFromIndex(0), false);
+	}
+	else
+	{
+		bsOut.Write((RakNet::MessageID)ID_TEXT_CHAT);
+		bsOut.Write(message);
+		peer->Send(&bsOut, HIGH_PRIORITY, RELIABLE_ORDERED, 0, peer->GetGUIDFromIndex(0), false);	//JANK
+	}
 
-	memset(message, 0, sizeof message);
+	if (sizeof message > 0)
+	{
+		memset(message, 0, sizeof message);
+	}
 	
 }
 
@@ -229,7 +243,7 @@ void handleOutputLocal(const GameState* state)
 int main(void)
 {
 	const unsigned short SERVER_PORT = 7777;
-	const char SERVER_IP[] = "172.16.2.57";	//get fron VDI
+	const char SERVER_IP[] = "172.16.2.61";	//get fron VDI
 
 	GameState gs[1] = {0};
 
