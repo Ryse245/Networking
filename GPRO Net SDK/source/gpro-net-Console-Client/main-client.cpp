@@ -245,7 +245,7 @@ void handleOutputLocal(const GameState* state)
 int main(void)
 {
 	const unsigned short SERVER_PORT = 7777;
-	const char SERVER_IP[] = "172.16.2.194";	//get fron VDI
+	const char SERVER_IP[] = "172.16.2.64";	//get fron VDI
 
 	GameState gs[1] = {0};
 
