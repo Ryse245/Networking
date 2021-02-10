@@ -176,7 +176,7 @@ void handleRemoteInput(GameState* state, bool* connect)
 		break;
 		case ID_TEXT_CHAT:
 		{
-			printf("Text message recieved \n");
+			//printf("Text message recieved \n");
 			RakNet::RakString rs;
 			RakNet::BitStream bsIn(packet->data, packet->length, false);
 			bsIn.IgnoreBytes(sizeof(RakNet::MessageID));
@@ -221,8 +221,10 @@ void handleOutputRemote(const GameState* state, char* message)
 		bsOut.Write((RakNet::MessageID)ID_USERNAMES_REQUEST);
 		peer->Send(&bsOut, HIGH_PRIORITY, RELIABLE_ORDERED, 0, peer->GetGUIDFromIndex(0), false);
 	}
-	else
+	else if (strcmp(message, "/update\n") != 0)
 	{
+		bsOut.Write((RakNet::MessageID)ID_TIMESTAMP);
+		bsOut.Write((RakNet::Time)RakNet::GetTime());
 		bsOut.Write((RakNet::MessageID)ID_TEXT_CHAT);
 		bsOut.Write(message);
 		peer->Send(&bsOut, HIGH_PRIORITY, RELIABLE_ORDERED, 0, peer->GetGUIDFromIndex(0), false);	//JANK
@@ -243,7 +245,7 @@ void handleOutputLocal(const GameState* state)
 int main(void)
 {
 	const unsigned short SERVER_PORT = 7777;
-	const char SERVER_IP[] = "172.16.2.61";	//get fron VDI
+	const char SERVER_IP[] = "172.16.2.194";	//get fron VDI
 
 	GameState gs[1] = {0};
 

@@ -119,9 +119,25 @@ int main(void)
 				printf("The server is full.\n");
 				break;
 			case ID_DISCONNECTION_NOTIFICATION:
+				for(int i = 0; i < MAX_CLIENTS; i++)
+				{
+					if (packet->systemAddress == clientAddresses[i])
+					{
+						usernames[i] = &RakNet::RakString().emptyString;
+						clientAddresses[i] = RakNet::UNASSIGNED_SYSTEM_ADDRESS;
+					}
+				}
 				printf("A client has disconnected.\n");
 				break;
 			case ID_CONNECTION_LOST:
+				for (int i = 0; i < MAX_CLIENTS; i++)
+				{
+					if (packet->systemAddress == clientAddresses[i])
+					{
+						usernames[i] = &RakNet::RakString().emptyString;
+						clientAddresses[i] = RakNet::UNASSIGNED_SYSTEM_ADDRESS;
+					}
+				}
 				printf("A client lost the connection.\n");
 				break;
 
@@ -138,10 +154,10 @@ int main(void)
 			{
 				//printf("Text message recieved \n");
 				RakNet::RakString rs;
-				RakNet::BitStream bsIn(packet->data, packet->length, false);
-				bsIn.IgnoreBytes(sizeof(RakNet::MessageID));
+				//RakNet::BitStream bsIn(packet->data, packet->length, false);
+				//bsIn.IgnoreBytes(sizeof(RakNet::MessageID));
 				bsIn.Read(rs);
-				//printf("%s\n", rs.C_String());
+				printf("%s\n", rs.C_String());
 				for (int i = 0; i < MAX_CLIENTS; i++)
 				{
 					if (packet->systemAddress == clientAddresses[i])
@@ -151,8 +167,14 @@ int main(void)
 						bsOut.Write(rs);
 						peer->Send(&bsOut, HIGH_PRIORITY, RELIABLE_ORDERED, 0, packet->systemAddress, true);
 						FILE* logfile = fopen("Z:\\textlog.txt", "a");	//For server, send to all
-						//rs.AppendBytes("\n", sizeof("\n"));
+						rs.AppendBytes(" Username: ", sizeof(" Username: "));
+						rs.AppendBytes(usernames[i].C_String(), sizeof(usernames[i].C_String()));
+						rs.AppendBytes(" Time: ", sizeof(" Time: "));
+						//rs.AppendBytes((char*)((int)sentTime), sizeof(sentTime));
 						int a = fputs(rs.C_String(), logfile);
+						//a = fputs((char*)((int)sentTime), logfile);
+						fprintf(logfile,"%i",(int)sentTime);
+						a = fputs("\n", logfile);
 						fclose(logfile);
 						break;
 					}
@@ -165,7 +187,12 @@ int main(void)
 						RakNet::RakString newUser = RakNet::RakString("%s has joined server\n", usernames[i].C_String());
 						bsOut.Write((RakNet::MessageID)ID_TEXT_CHAT);
 						bsOut.Write(newUser);
-						peer->Send(&bsOut, HIGH_PRIORITY, RELIABLE_ORDERED, 0, RakNet::UNASSIGNED_RAKNET_GUID, true);
+						peer->Send(&bsOut, HIGH_PRIORITY, RELIABLE_ORDERED, 0, packet->systemAddress, true);
+
+						bsOut.Reset();
+						bsOut.Write((RakNet::MessageID)ID_TEXT_CHAT);
+						bsOut.Write("Welcome to the chatroom!");
+						peer->Send(&bsOut, HIGH_PRIORITY, RELIABLE_ORDERED, 0, packet->systemAddress, false);
 						break;
 					}
 				}
