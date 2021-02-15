@@ -37,6 +37,7 @@
 #include "RakNet/RakNetTypes.h"  // MessageID
 #include "RakNet/GetTime.h"
 
+#include "gpro-net/gpro-net-common/gpro-net-console.h"
 //#define SERVER_PORT 60000
 
 
@@ -58,6 +59,130 @@ struct GameMessage1
 struct GameState
 {
 	RakNet::RakPeerInterface* peer;
+};
+
+// Commonalities in mesages
+// timestamp identifier (constant)
+// timestamp
+// message identifier
+// ability to read/write
+// ability to determine priority (usually in send settings)
+// things that change in between messages
+// message data
+//		any type of raw bytes
+//		no pointers
+// Other:
+// what if: pointer to pool of memory
+
+// common interface
+// want to be able to read/write from/to bitstream
+// way of mapping our data to bitstream
+class cMessage
+{
+	const RakNet::MessageID id;
+protected:
+	cMessage(//RakNet::Time newTime,
+		RakNet::MessageID idNew) : //time(newTime), 
+		id(idNew) {}
+public:
+	//RakNet::Time GetTime() const { return time; };
+	RakNet::MessageID GetID() const { return id; };
+
+	// decypher function?
+
+	virtual RakNet::BitStream& Read(RakNet::BitStream& bsp)
+	{
+		//bsp->Read(time);
+		//return true;
+		return bsp;
+	}
+	virtual RakNet::BitStream& Write(RakNet::BitStream& bsp) const
+	{
+		//bsp->Write(time);
+		//return true;
+		//return bsp;
+	}
+
+};
+
+RakNet::BitStream& operator>>(RakNet::BitStream& bsp, cMessage& msg)
+{
+	return msg.Read(bsp);
+}
+RakNet::BitStream& operator<<(RakNet::BitStream& bsp, cMessage const& msg)
+{
+	return msg.Write(bsp);
+}
+
+// message header
+class cMsgHeader
+{
+	//no data: timestamp ID
+	RakNet::Time time;
+
+	//sequence
+	int count;	//How many pieces of data
+	//RakNet::MessageID* id_list;
+	RakNet::MessageID id_list[16];	//identifiers for data
+	//Identifiers written ahead of everything else, let's you know about everything in packet
+};
+
+
+// Time msg
+class cTimeMessage : public cMessage
+{
+	RakNet::Time time;
+public:
+	cTimeMessage() : cMessage(ID_TIMESTAMP),time(RakNet::GetTime()) {}
+	RakNet::Time GetTime() const { return time; };
+
+	bool Read(RakNet::BitStream* bsp)
+	{
+		//RakNet::MessageID fakeID;
+		//bsp->Read(fakeID);
+		bsp->Read(time);
+		return true;
+	}
+	bool Write(RakNet::BitStream* bsp)
+	{
+		//bsp->Write(GetID());
+		bsp->Write(time);
+		return true;
+	}
+};
+
+enum gproMessageID
+{
+	ID_CHATMESSAGE = ID_USER_PACKET_ENUM + 1,
+};
+#include <string>
+
+class cChatMessage : public cMessage
+{
+	//sender, reciever, content
+	//std::string str;
+	//RakNet::RakString rStr;
+	char* cstr;
+	int length;
+public:
+	//cChatMessage(std::string str_new) : cMessage(ID_CHATMESSAGE), str(str_new){}
+	cChatMessage(char* cstr_new) : cMessage(ID_CHATMESSAGE), cstr(cstr_new), length(strlen(cstr_new)){}
+
+	bool Read(RakNet::BitStream* bsp)
+	{		
+		bsp->Read(length);
+		// allocation
+		bsp->Read(cstr,length);
+		return true;
+	}
+	bool Write(RakNet::BitStream* bsp) const
+	{
+		//Can write ID but can't read back
+		bsp->Write(length);
+		//bsp->Write((char const*) cstr);
+		bsp->Write(cstr, length); //either works
+		return true;
+	}
 };
 
 void handleInputLocal(GameState* state, char* msg, bool* init)
@@ -244,6 +369,7 @@ void handleOutputLocal(const GameState* state)
 
 int main(void)
 {
+	/*
 	const unsigned short SERVER_PORT = 7777;
 	const char SERVER_IP[] = "172.16.2.64";	//get fron VDI
 
@@ -277,7 +403,15 @@ int main(void)
 		//output
 		handleOutputLocal(gs);
 	}
+	*/
 
+	//Dan using other main, not sure why?
+	gpro_consoleDrawTestPatch();
+
+
+
+	printf("Download new gamestate.h file.\n");
+	system("pause");
 	return 0;
 }
 
@@ -287,6 +421,5 @@ int main(int const argc, char const* const argv[])
 
 
 	printf("\n\n");
-	system("pause");
 }
 */
