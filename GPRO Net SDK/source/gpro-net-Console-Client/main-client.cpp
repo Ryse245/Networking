@@ -151,6 +151,8 @@ public:
 	}
 };
 
+//Only for notes
+//GetAsyncKeyState() from winuser.h??????????
 enum gproMessageID
 {
 	ID_CHATMESSAGE = ID_USER_PACKET_ENUM + 1,
@@ -163,7 +165,7 @@ class cChatMessage : public cMessage
 	//std::string str;
 	//RakNet::RakString rStr;
 	char* cstr;
-	int length;
+	size_t length;
 public:
 	//cChatMessage(std::string str_new) : cMessage(ID_CHATMESSAGE), str(str_new){}
 	cChatMessage(char* cstr_new) : cMessage(ID_CHATMESSAGE), cstr(cstr_new), length(strlen(cstr_new)){}
@@ -172,7 +174,7 @@ public:
 	{		
 		bsp->Read(length);
 		// allocation
-		bsp->Read(cstr,length);
+		bsp->Read(cstr,(unsigned)length);
 		return true;
 	}
 	bool Write(RakNet::BitStream* bsp) const
@@ -180,7 +182,7 @@ public:
 		//Can write ID but can't read back
 		bsp->Write(length);
 		//bsp->Write((char const*) cstr);
-		bsp->Write(cstr, length); //either works
+		bsp->Write(cstr, (unsigned)length); //either works
 		return true;
 	}
 };
