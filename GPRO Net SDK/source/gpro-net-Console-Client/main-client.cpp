@@ -23,6 +23,7 @@
 */
 
 #include "gpro-net/gpro-net.h"
+#include "gpro-net/gpro-net-common/gpro-net-gamestate.h"
 
 
 #include <stdio.h>
@@ -61,6 +62,8 @@ struct GameState
 	RakNet::RakPeerInterface* peer;
 };
 
+
+/*
 // Commonalities in mesages
 // timestamp identifier (constant)
 // timestamp
@@ -186,20 +189,137 @@ public:
 		return true;
 	}
 };
-
-void handleInputLocal(GameState* state, char* msg, bool* init)
+*/
+void handleInputLocal(GameState* state, char* msg, bool* init, gpro_battleship* p1, gpro_battleship* p2, bool& turn)
 {
+	
 	if (*init!=true)
 	{
+		/*
 		printf("Enter username and hit 'enter' to log on \n");
 		fgets(msg, 512, stdin);
-		//printf("Your username is %s \n",msg);	//SET USERNAME ON SERVER, SEND TIME + MSG TO SERVER
+		//printf("Your username is %s \n",msg);	//SET USERNAME ON SERVER, SEND TIME + MSG TO SERVER*/
+
+		gpro_battleship_reset(*p1);
+		gpro_battleship_reset(*p2);
+		
+		//gpro_flag_check(p1[0][0][7], gpro_battleship_ship_c5);
+		//gpro_flag_raise(p1[0][0][0], gpro_battleship_hit);
+		//gpro_flag_lower(p1[0][0][1], gpro_battleship_open);
+		
+		for (int i = 0; i < 10; ++i)
+		{
+			for (int j = 0; j < 10; ++j)
+			{	
+				*p1[i][j] = gpro_battleship_open;
+				*p2[i][j] = gpro_battleship_open;
+			}
+		}
+		
+
+		*p1[0][0] += gpro_battleship_ship_c5;
+		*p1[1][0] += gpro_battleship_ship_c5;
+		*p1[2][0] += gpro_battleship_ship_c5;
+		*p1[3][0] += gpro_battleship_ship_c5;
+
+		*p2[1][0] += gpro_battleship_ship_c5;
+		*p2[1][1] += gpro_battleship_ship_c5;
+		*p2[1][2] += gpro_battleship_ship_c5;
+		*p2[1][3] += gpro_battleship_ship_c5;
+
+		/*
+		if (*p1[0][0] & gpro_battleship_ship_c5)
+		{
+			printf("C5 ship");
+		}
+		
+		if (*p1[0][0] & gpro_battleship_hit)
+		{
+			printf("Hit Space");
+		}
+
+		*p1[0][0] += gpro_battleship_miss;
+		*p1[0][0] -= gpro_battleship_hit;
+
+		if (*p1[0][0] & gpro_battleship_ship_c5)
+		{
+			printf("C5 ship");
+		}
+
+		if (*p1[0][0] & gpro_battleship_hit)
+		{
+			printf("Hit Space");
+		}
+		if (*p1[0][0] & gpro_battleship_miss)
+		{
+			printf("Miss Space");
+		}
+		const char test = p1[0][0][0];
+		printf(&test);*/
+
 		*init = true;
 	}
+	
 	else
 	{
-		printf("Type message\n");
-		fgets(msg, 512, stdin);
+		int debug;
+		if (turn)
+		{
+			printf("Player one, type coordinates\n");
+			int x;
+			debug = scanf("%d", &x);
+			int y;
+			debug =	scanf("%d", &y);
+
+			if (*p1[x][y] & gpro_battleship_attack_rec)
+			{
+				printf("You have already attacked this space. Please try again.\n");
+				return;
+			}
+			if (*p2[x][y] & gpro_battleship_ship)
+			{
+				printf("HIT!\n");
+				*p2[x][y] += gpro_battleship_damage;
+				*p1[x][y] += gpro_battleship_hit;
+				*p1[x][y] -= gpro_battleship_open;
+			}
+			else
+			{
+				printf("MISS\n");
+				*p1[x][y] += gpro_battleship_miss;
+				*p1[x][y] -= gpro_battleship_open;
+			}
+			turn = false;
+		}
+		else
+		{
+			printf("Player two, type coordinates\n");
+			int x;
+			debug = scanf("%d", &x);
+			int y;
+			debug = scanf("%d", &y);
+			if (*p2[x][y] & gpro_battleship_attack_rec)
+			{
+				printf("You have already attacked this space. Please try again.\n");
+				return;
+			}
+			if (*p1[x][y] & gpro_battleship_ship)
+			{
+				printf("HIT!\n");
+				*p1[x][y] += gpro_battleship_damage;
+				*p2[x][y] += gpro_battleship_hit;
+				*p2[x][y] -= gpro_battleship_open;
+			}
+			else
+			{
+				printf("MISS\n");
+				*p1[x][y] += gpro_battleship_miss;
+				*p1[x][y] -= gpro_battleship_open;
+			}
+			turn = true;
+		}
+		//printf("Type message\n");
+		//fgets(msg, 512, stdin);
 	}
 	//Keyboard, controller, etc
 }
@@ -330,9 +450,35 @@ void handleRemoteInput(GameState* state, bool* connect)
 	}
 }
 
-void handleUpdate(GameState* state)
+void handleUpdate(GameState* state, gpro_battleship* p1, gpro_battleship* p2)
 {
 	//figure out what the state actually is
+	int shipCountP1 = 0;
+	int shipCountP2 = 0;
+
+	for (int i = 0; i < 10; i++)
+	{
+		for (int j = 0; j < 10; j++)
+		{
+			if ((*p1[i][j] & gpro_battleship_ship) && !(*p1[i][j] & gpro_battleship_hit))
+			{
+				shipCountP1++;
+			}
+			if ((*p2[i][j] & gpro_battleship_ship) && !(*p2[i][j] & gpro_battleship_damage))
+			{
+				shipCountP2++;
+			}
+		}
+	}
+
+	if (shipCountP1 == 0)
+	{
+		printf("Player Two Wins!\n");
+	}
+	if (shipCountP2 == 0)
+	{
+		printf("Player One Wins!\n");
+	}
 }
 
 void handleOutputRemote(const GameState* state, char* message)
@@ -371,7 +517,7 @@ void handleOutputLocal(const GameState* state)
 
 int main(void)
 {
-	/*
+	
 	const unsigned short SERVER_PORT = 7777;
 	const char SERVER_IP[] = "172.16.2.64";	//get fron VDI
 
@@ -380,39 +526,44 @@ int main(void)
 	char message[512];
 	bool initialized = false;
 	bool connected = false;
-
+	/*
 	gs->peer = RakNet::RakPeerInterface::GetInstance();
 	RakNet::SocketDescriptor sd;
 	gs->peer->Startup(1, &sd, 1);
 	gs->peer->SetMaximumIncomingConnections(0);
 	gs->peer->Connect(SERVER_IP, SERVER_PORT, 0, 0);
+*/
+	gpro_battleship playerOne;
+	gpro_battleship playerTwo;
+
+	bool playerTurn = true;	//true = p1, false = p2
 
 	//game loop
 	while (1)
 	{
 		//input
-		handleInputLocal(gs, message, &initialized);
+		handleInputLocal(gs, message, &initialized, &playerOne, &playerTwo, playerTurn);
 		//recieve and merge
-		handleRemoteInput(gs, &connected);
+		//handleRemoteInput(gs, &connected);
 		//update
-		handleUpdate(gs);
+		handleUpdate(gs, &playerOne, &playerTwo);
 		//package and send
-		
+		/*
 		if (connected==true)
 		{
 			handleOutputRemote(gs, message);
-		}
+		}*/
 		//output
-		handleOutputLocal(gs);
+		//handleOutputLocal(gs);
 	}
-	*/
+	
 
 	//Dan using other main, not sure why?
-	gpro_consoleDrawTestPatch();
+	//gpro_consoleDrawTestPatch();
 
 
 
-	printf("Download new gamestate.h file.\n");
+	//printf("Download new gamestate.h file.\n");
 	system("pause");
 	return 0;
 }
