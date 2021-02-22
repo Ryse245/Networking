@@ -23,7 +23,7 @@
 */
 
 #include "gpro-net/gpro-net.h"
-#include "gpro-net/gpro-net-common/gpro-net-gamestate.h"
+//#include "gpro-net/gpro-net-common/gpro-net-gamestate.h"
 
 
 #include <stdio.h>
@@ -38,7 +38,7 @@
 #include "RakNet/RakNetTypes.h"  // MessageID
 #include "RakNet/GetTime.h"
 
-#include "gpro-net/gpro-net-common/gpro-net-console.h"
+//#include "gpro-net/gpro-net-common/gpro-net-console.h"
 //#define SERVER_PORT 60000
 
 
@@ -271,25 +271,33 @@ void handleInputLocal(GameState* state, char* msg, bool* init, gpro_battleship* 
 			int y;
 			debug =	scanf("%d", &y);
 
-			if (*p1[x][y] & gpro_battleship_attack_rec)
+			if (x < 0 || x > 9 || y < 0 || y > 9)
 			{
-				printf("You have already attacked this space. Please try again.\n");
-				return;
-			}
-			if (*p2[x][y] & gpro_battleship_ship)
-			{
-				printf("HIT!\n");
-				*p2[x][y] += gpro_battleship_damage;
-				*p1[x][y] += gpro_battleship_hit;
-				*p1[x][y] -= gpro_battleship_open;
+				printf("Invalid attack index, try again.\n");
 			}
 			else
 			{
-				printf("MISS\n");
-				*p1[x][y] += gpro_battleship_miss;
-				*p1[x][y] -= gpro_battleship_open;
+
+				if (*p1[x][y] & gpro_battleship_attack_rec)
+				{
+					printf("You have already attacked this space. Please try again.\n");
+					return;
+				}
+				if (*p2[x][y] & gpro_battleship_ship)
+				{
+					printf("HIT!\n");
+					*p2[x][y] += gpro_battleship_damage;
+					*p1[x][y] += gpro_battleship_hit;
+					*p1[x][y] -= gpro_battleship_open;
+				}
+				else
+				{
+					printf("MISS\n");
+					*p2[x][y] += gpro_battleship_miss;
+					*p2[x][y] -= gpro_battleship_open;
+				}
+				turn = true;
 			}
-			turn = false;
 		}
 		else
 		{
@@ -298,25 +306,33 @@ void handleInputLocal(GameState* state, char* msg, bool* init, gpro_battleship* 
 			debug = scanf("%d", &x);
 			int y;
 			debug = scanf("%d", &y);
-			if (*p2[x][y] & gpro_battleship_attack_rec)
+			if (x < 0 || x > 9 || y < 0 || y > 9)
 			{
-				printf("You have already attacked this space. Please try again.\n");
-				return;
-			}
-			if (*p1[x][y] & gpro_battleship_ship)
-			{
-				printf("HIT!\n");
-				*p1[x][y] += gpro_battleship_damage;
-				*p2[x][y] += gpro_battleship_hit;
-				*p2[x][y] -= gpro_battleship_open;
+				printf("Invalid attack index, try again.\n");
 			}
 			else
 			{
-				printf("MISS\n");
-				*p1[x][y] += gpro_battleship_miss;
-				*p1[x][y] -= gpro_battleship_open;
+
+				if (*p2[x][y] & gpro_battleship_attack_rec)
+				{
+					printf("You have already attacked this space. Please try again.\n");
+					return;
+				}
+				if (*p1[x][y] & gpro_battleship_ship)
+				{
+					printf("HIT!\n");
+					*p1[x][y] += gpro_battleship_damage;
+					*p2[x][y] += gpro_battleship_hit;
+					*p2[x][y] -= gpro_battleship_open;
+				}
+				else
+				{
+					printf("MISS\n");
+					*p1[x][y] += gpro_battleship_miss;
+					*p1[x][y] -= gpro_battleship_open;
+				}
+				turn = true;
 			}
-			turn = true;
 		}
 		//printf("Type message\n");
 		//fgets(msg, 512, stdin);
@@ -460,7 +476,7 @@ void handleUpdate(GameState* state, gpro_battleship* p1, gpro_battleship* p2)
 	{
 		for (int j = 0; j < 10; j++)
 		{
-			if ((*p1[i][j] & gpro_battleship_ship) && !(*p1[i][j] & gpro_battleship_hit))
+			if ((*p1[i][j] & gpro_battleship_ship) && !(*p1[i][j] & gpro_battleship_damage))
 			{
 				shipCountP1++;
 			}

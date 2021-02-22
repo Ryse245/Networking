@@ -21,6 +21,8 @@
 	gpro-net.h
 	Main include for framework.
 */
+#include "gpro-net/gpro-net-common/gpro-net-gamestate.h"
+#include "gpro-net/gpro-net-common/gpro-net-console.h"
 
 #ifndef _GPRO_NET_H_
 #define _GPRO_NET_H_
@@ -29,8 +31,19 @@ enum GameMessages
 {
 	ID_GAME_MESSAGE_1 = 135,
 	ID_TEXT_CHAT,
-	ID_USERNAMES_REQUEST
+	ID_USERNAMES_REQUEST,
+	ID_BATTLESHIP,
+	ID_CREATE_ROOM,
+	ID_JOIN_ROOM,
+	ID_SETUP_BOARD,
+	ID_GET_LOBBIES
 };
 
+struct BattleShipOrder
+{
+	//MessageID bsID;
+	unsigned short xCoordinate;
+	unsigned short yCoordinate;
+};
 
 #endif	// !_GPRO_NET_H_

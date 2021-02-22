@@ -37,6 +37,8 @@
 #include "RakNet/RakNetTypes.h"  // MessageID
 #include "RakNet/GetTime.h"
 
+//#include "gpro-net/gpro-net-common/gpro-net-gamestate.h"
+
 //#define MAX_CLIENTS 10
 //#define SERVER_PORT 60000
 /*
@@ -46,6 +48,31 @@ enum GameMessages
 	ID_TEXT_CHAT
 };
 */
+
+enum class PlayerTurn
+{
+	PLAYER_ONE,
+	PLAYER_TWO
+};
+class GameRoom
+{
+public:
+	int CreateRoom(RakNet::RakString playerUName);
+	int JoinRoom(RakNet::RakString playerUName);
+	void StartGame();
+	int UpdateGame(int xPos, int yPos);
+
+	RakNet::RakString playerNames[2];
+	RakNet::RakString spectatorNames[8];
+private:
+	gpro_battleship playerOne;
+	gpro_battleship playerTwo;
+
+	bool createdRoom = false;
+	bool startGame = false;
+	PlayerTurn currentTurn = PlayerTurn::PLAYER_ONE;
+};
+
 int main(void)
 {
 	const unsigned short MAX_CLIENTS = 10;
@@ -57,14 +84,14 @@ int main(void)
 	peer->Startup(MAX_CLIENTS, &sd, 1);
 	peer->SetMaximumIncomingConnections(MAX_CLIENTS);
 
-	RakNet::SystemAddress clientAddresses[10];
-	RakNet::RakString usernames[10];
+	RakNet::SystemAddress clientAddresses[MAX_CLIENTS];
+	RakNet::RakString usernames[MAX_CLIENTS];
+	GameRoom possibleRooms[MAX_CLIENTS];	//I guess in case everyone just wants to sit in their own room?
 	
 	printf("Starting the server.\n");
 	//fputs("HaHaPenis", logfile);
 	//fclose(logfile);
 	// We need to let the server accept incoming connections from the clients
-
 	while (1)
 	{
 		for (packet = peer->Receive(); packet; peer->DeallocatePacket(packet), packet = peer->Receive())
@@ -160,7 +187,7 @@ int main(void)
 				printf("%s\n", rs.C_String());
 				for (int i = 0; i < MAX_CLIENTS; i++)
 				{
-					if (packet->systemAddress == clientAddresses[i])
+					if (packet->systemAddress == clientAddresses[i])	//Client already "logged on"
 					{
 						RakNet::BitStream bsOut;
 						bsOut.Write((RakNet::MessageID)ID_TEXT_CHAT);
@@ -178,7 +205,7 @@ int main(void)
 						fclose(logfile);
 						break;
 					}
-					else if (packet->systemAddress != clientAddresses[i] && clientAddresses[i]==RakNet::UNASSIGNED_SYSTEM_ADDRESS )
+					else if (packet->systemAddress != clientAddresses[i] && clientAddresses[i]==RakNet::UNASSIGNED_SYSTEM_ADDRESS )	//New client
 					{
 						clientAddresses[i] = packet->systemAddress;
 						usernames[i] = rs;
@@ -191,7 +218,7 @@ int main(void)
 
 						bsOut.Reset();
 						bsOut.Write((RakNet::MessageID)ID_TEXT_CHAT);
-						bsOut.Write("Welcome to the chatroom!");
+						bsOut.Write("Welcome to the lobby!\nType '/update' to get chat messages and '/getlobby' to get a list of lobbies to join\n");
 						peer->Send(&bsOut, HIGH_PRIORITY, RELIABLE_ORDERED, 0, packet->systemAddress, false);
 						break;
 					}
@@ -214,6 +241,44 @@ int main(void)
 				}
 				bsOut.Write((RakNet::MessageID)ID_USERNAMES_REQUEST);
 				bsOut.Write(userNameList);
+				BattleShipOrder newOrder;
+				newOrder.xCoordinate = 1;
+				newOrder.yCoordinate = 1;
+				//newOrder.bsID = (RakNet::MessageID)ID_BATTLESHIP;
+				//bsOut.Write(newOrder, sizeof(newOrder));
+
+				peer->Send(&bsOut, HIGH_PRIORITY, RELIABLE_ORDERED, 0, packet->systemAddress, false);
+				break;
+			}
+			case ID_SETUP_BOARD:
+			{
+
+				break;
+			}
+			case ID_GET_LOBBIES:
+			{
+				RakNet::BitStream bsOut;
+				RakNet::RakString roomList = "Rooms:\n";
+				bsOut.Write((RakNet::MessageID)ID_TEXT_CHAT);
+				for (__int64 i = 0; i < MAX_CLIENTS; i++)
+				{
+					if (!possibleRooms[i].playerNames->IsEmpty())
+					{
+						roomList.AppendBytes((char*)i, sizeof((char*)i));	//Room index
+						roomList.AppendBytes(". Player(s): ", sizeof(". Player(s): "));	//For readability when printing EX: 1. Player(s):
+						//for (int j = 0; j < 2; j++)
+						//{
+							roomList.AppendBytes(possibleRooms[i].playerNames->C_String(), sizeof(possibleRooms[i].playerNames->C_String()));	//Not sure if this works yet
+						//}	//Final print should be "0. Player(s): username1
+						roomList.AppendBytes("\n", sizeof("\n"));
+					}
+				}
+				if (roomList == "Rooms:\n")	//if no rooms were added to print
+				{
+					roomList.AppendBytes("No rooms available. Create one by typing '/create'\n", sizeof("No rooms available. Create one by typing '/create'\n"));
+
+				}
+				bsOut.Write(roomList);
 				peer->Send(&bsOut, HIGH_PRIORITY, RELIABLE_ORDERED, 0, packet->systemAddress, false);
 				break;
 			}
@@ -239,3 +304,131 @@ int main(int const argc, char const* const argv[])
 	system("pause");
 }
 */
+
+int GameRoom::CreateRoom(RakNet::RakString playerUName)
+{
+	playerNames[0] = playerUName;
+	//Player now has "created" a lobby and joined it
+	createdRoom = true;
+	return 0;
+}
+
+int GameRoom::JoinRoom(RakNet::RakString playerUName)
+{
+	if (playerNames[1].IsEmpty())
+	{
+		playerNames[1] = playerUName;
+	}
+	else
+	{
+		for (int i = 0; i < sizeof(spectatorNames); i++)
+		{
+			if (spectatorNames[i].IsEmpty())
+			{
+				spectatorNames[i] = playerUName;
+			}
+		}
+	}
+	return 0;
+}
+
+void GameRoom::StartGame()
+{
+	if (!playerNames[0].IsEmpty() && !playerNames[1].IsEmpty())
+	{
+		//Both players in game room, start game
+		for (int i = 0; i < 10; ++i)
+		{
+			for (int j = 0; j < 10; ++j)
+			{
+				playerOne[i][j] = gpro_battleship_open;	//Mark every space on both boards as open
+				playerTwo[i][j] = gpro_battleship_open;
+			}
+		}
+
+		//SET BOARDS
+
+
+		startGame = true;
+	}
+	else
+	{
+		printf("Not enough players to start.\n");
+	}
+}
+int GameRoom::UpdateGame(int xPos, int yPos)
+{
+	switch (currentTurn)
+	{
+	case PlayerTurn::PLAYER_ONE:
+
+		if (playerTwo[xPos][yPos] & gpro_battleship_ship && !(playerTwo[xPos][yPos] & gpro_battleship_damage))	//Second part most likely redundant, but a good idea to check
+		{
+			//Hit a ship (that we haven't hit before)
+			playerTwo[xPos][yPos] += gpro_battleship_damage;
+			playerOne[xPos][yPos] += gpro_battleship_hit;
+			playerOne[xPos][yPos] -= gpro_battleship_open;
+		}
+		else
+		{
+			//Missed
+			playerOne[xPos][yPos] += gpro_battleship_miss;
+			playerOne[xPos][yPos] -= gpro_battleship_open;
+		}
+
+		currentTurn = PlayerTurn::PLAYER_TWO;
+		break;
+	case PlayerTurn::PLAYER_TWO:
+
+		if (playerOne[xPos][yPos] & gpro_battleship_ship && !(playerOne[xPos][yPos] & gpro_battleship_damage))	//Second part most likely redundant, but a good idea to check
+		{
+			//Hit a ship (that we haven't hit before)
+			playerOne[xPos][yPos] += gpro_battleship_damage;
+			playerTwo[xPos][yPos] += gpro_battleship_hit;
+			playerTwo[xPos][yPos] -= gpro_battleship_open;
+
+		}
+		else
+		{
+			//Missed
+			playerTwo[xPos][yPos] += gpro_battleship_miss;
+			playerTwo[xPos][yPos] -= gpro_battleship_open;
+		}
+
+		currentTurn = PlayerTurn::PLAYER_ONE;
+		break;
+	default:
+		break;
+	}
+
+	int shipCountP1 = 0;
+	int shipCountP2 = 0;
+
+	for (int i = 0; i < 10; i++)
+	{
+		for (int j = 0; j < 10; j++)
+		{
+			if ((playerOne[i][j] & gpro_battleship_ship) && !(playerOne[i][j] & gpro_battleship_damage))
+			{
+				shipCountP1++;
+			}
+			if ((playerTwo[i][j] & gpro_battleship_ship) && !(playerTwo[i][j] & gpro_battleship_damage))
+			{
+				shipCountP2++;
+			}
+		}
+	}
+
+	if (shipCountP1 == 0)
+	{
+		printf("Player Two Wins!\n");
+		return 2;
+	}
+	if (shipCountP2 == 0)
+	{
+		printf("Player One Wins!\n");
+		return 1;
+	}
+
+	return 0;
+}
