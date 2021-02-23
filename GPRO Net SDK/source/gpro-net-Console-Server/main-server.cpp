@@ -63,6 +63,7 @@ public:
 	int UpdateGame(int xPos, int yPos);
 
 	bool GetCreatedRoom() {	return createdRoom;	}
+	bool GetStartGame() { return StartGame; }
 	//void SetCreatedRoom(bool room) { createdRoom = room; }
 
 	RakNet::RakString playerNames[2];
@@ -82,7 +83,7 @@ int main(void)
 	const unsigned short SERVER_PORT = 7777;
 	RakNet::RakPeerInterface* peer = RakNet::RakPeerInterface::GetInstance();
 	RakNet::Packet* packet;
-
+	int gameIndex = 0;
 	RakNet::SocketDescriptor sd(SERVER_PORT, 0);
 	peer->Startup(MAX_CLIENTS, &sd, 1);
 	peer->SetMaximumIncomingConnections(MAX_CLIENTS);
@@ -260,6 +261,19 @@ int main(void)
 
 				break;
 			}
+			case ID_BATTLESHIP:
+			{
+				//PASS IN STRUCT WITH COORDINATES
+				//RakNet::RakString rs;
+				RakNet::BitStream bsIn(packet->data, packet->length, false);
+				bsIn.IgnoreBytes(sizeof(RakNet::MessageID));
+				//bsIn.Read(rs);
+				for (int i = 0; i < MAX_CLIENTS; i++)
+				{
+
+				}
+				break;
+			}
 			case ID_GET_ROOMS:
 			{
 				RakNet::BitStream bsOut;
@@ -340,7 +354,13 @@ int main(void)
 			}
 		}
 	}
-
+	for (int i = 0; i < MAX_CLIENTS; i++)
+	{
+		if (possibleRooms[i].GetStartGame()==false)
+		{
+			possibleRooms[i].StartGame();
+		}
+	}
 	RakNet::RakPeerInterface::DestroyInstance(peer);
 
 	return 0;
