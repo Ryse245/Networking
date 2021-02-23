@@ -62,6 +62,9 @@ public:
 	void StartGame();
 	int UpdateGame(int xPos, int yPos);
 
+	bool GetCreatedRoom() {	return createdRoom;	}
+	//void SetCreatedRoom(bool room) { createdRoom = room; }
+
 	RakNet::RakString playerNames[2];
 	RakNet::RakString spectatorNames[8];
 private:
@@ -223,7 +226,7 @@ int main(void)
 
 						bsOut.Reset();
 						bsOut.Write((RakNet::MessageID)ID_TEXT_CHAT);
-						bsOut.Write("Welcome to the lobby!\nType '/update' to get chat messages and '/getlobby' to get a list of lobbies to join\n");
+						bsOut.Write("Welcome to the lobby!\nType '/update' to get chat messages and '/getRooms' to get a list of lobbies to join\n");
 						peer->Send(&bsOut, HIGH_PRIORITY, RELIABLE_ORDERED, 0, packet->systemAddress, false);
 						break;
 					}
@@ -246,9 +249,6 @@ int main(void)
 				}
 				bsOut.Write((RakNet::MessageID)ID_USERNAMES_REQUEST);
 				bsOut.Write(userNameList);
-				BattleShipOrder newOrder;
-				newOrder.xCoordinate = 1;
-				newOrder.yCoordinate = 1;
 				//newOrder.bsID = (RakNet::MessageID)ID_BATTLESHIP;
 				//bsOut.Write(newOrder, sizeof(newOrder));
 
@@ -287,13 +287,59 @@ int main(void)
 				peer->Send(&bsOut, HIGH_PRIORITY, RELIABLE_ORDERED, 0, packet->systemAddress, false);
 				break;
 			}
+			case ID_CREATE_ROOM:
+			{
+				//Assign client to new empty room
+				//RakNet::RakString rs;
+				RakNet::BitStream bsIn(packet->data, packet->length, false);
+				bsIn.IgnoreBytes(sizeof(RakNet::MessageID));
+				//bsIn.Read(rs);
+				for (int i = 0; i < MAX_CLIENTS; i++)
+				{
+					if (!possibleRooms[i].GetCreatedRoom())
+					{
+						for (int j = 0; j < MAX_CLIENTS; j++)
+						{
+							if (clientAddresses[j] == packet->systemAddress)
+							{
+								possibleRooms[i].CreateRoom(usernames[j]);
+								//possibleRooms[i].playerNames[0] = usernames[j];
+								break;
+							}
+						}
+						//possibleRooms[i].SetCreatedRoom(true);
+						break;
+					}
+				}
+				break;
+			}
+			case ID_JOIN_ROOM:
+			{
+				char rs;
+				RakNet::BitStream bsIn(packet->data, packet->length, false);
+				bsIn.IgnoreBytes(sizeof(RakNet::MessageID));
+				bsIn.Read(rs);
+				int requestedRoom = rs - '0';
+				//Read in requested room and assign player
+				if (possibleRooms[requestedRoom].GetCreatedRoom() == true)
+				{
+					for (int i = 0; i < MAX_CLIENTS; i++)
+					{
+						if (clientAddresses[i]==packet->systemAddress)
+						{
+							possibleRooms[requestedRoom].JoinRoom(usernames[i]);
+							break;
+						}
+					}
+				}
+				break;
+			}
 			default:
 				printf("Message with identifier %i has arrived.\n", packet->data[0]);
 				break;
 			}
 		}
 	}
-
 
 	RakNet::RakPeerInterface::DestroyInstance(peer);
 

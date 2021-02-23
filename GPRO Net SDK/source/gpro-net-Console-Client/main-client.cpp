@@ -42,7 +42,7 @@
 //#include "gpro-net/gpro-net-common/gpro-net-console.h"
 //#define SERVER_PORT 60000
 
-
+/*
 #pragma pack(push)
 #pragma pack(1)
 struct GameMessage1
@@ -56,7 +56,7 @@ struct GameMessage1
 	char msg[512];
 	//char* msg;
 };
-#pragma pack(pop)
+#pragma pack(pop)*/
 
 struct GameState
 {
@@ -191,15 +191,14 @@ public:
 	}
 };
 */
-void handleInputLocal(GameState* state, char* msg, bool* init, gpro_battleship* p1, gpro_battleship* p2, bool& turn)
+void handleInputLocal(GameState* state, char* msg, bool* init, gpro_battleship* currentBoard)
 {
-	
+	char* debugChar;
 	if (*init!=true)
 	{
-		
 		printf("Enter username and hit 'enter' to log on \n");
 		fgets(msg, 512, stdin);
-		strtok(msg, "\n");
+		debugChar = strtok(msg, "\n");
 		//printf("Your username is %s \n",msg);	//SET USERNAME ON SERVER, SEND TIME + MSG TO SERVER
 		/*
 		gpro_battleship_reset(*p1);
@@ -339,12 +338,12 @@ void handleInputLocal(GameState* state, char* msg, bool* init, gpro_battleship* 
 		}*/
 		printf("Type message\n");
 		fgets(msg, 512, stdin);
-		strtok(msg, "\n");
+		debugChar = strtok(msg, "\n");
 	}
 	//Keyboard, controller, etc
 }
 
-void handleRemoteInput(GameState* state, bool* connect)
+void handleRemoteInput(GameState* state, bool* connect, gpro_battleship* currentBoard)
 {
 	RakNet::RakPeerInterface* peer = state->peer;
 	RakNet::Packet* packet;
@@ -470,8 +469,9 @@ void handleRemoteInput(GameState* state, bool* connect)
 	}
 }
 
-void handleUpdate(GameState* state, gpro_battleship* p1, gpro_battleship* p2)
+void handleUpdate(GameState* state)//, gpro_battleship* p1, gpro_battleship* p2)
 {
+	/*
 	//figure out what the state actually is
 	int shipCountP1 = 0;
 	int shipCountP2 = 0;
@@ -499,6 +499,7 @@ void handleUpdate(GameState* state, gpro_battleship* p1, gpro_battleship* p2)
 	{
 		printf("Player One Wins!\n");
 	}
+	*/
 }
 
 void handleOutputRemote(const GameState* state, char* message)
@@ -507,13 +508,14 @@ void handleOutputRemote(const GameState* state, char* message)
 	
 	RakNet::RakPeerInterface* peer = state->peer;
 	RakNet::BitStream bsOut;
-
+	/*
 	if (strcmp(message,"/getUsers")==0)
 	{
 		//send request for all usernames
 		bsOut.Write((RakNet::MessageID)ID_USERNAMES_REQUEST);
 		peer->Send(&bsOut, HIGH_PRIORITY, RELIABLE_ORDERED, 0, peer->GetGUIDFromIndex(0), false);
 	}
+	*/
 	if (strcmp(message, "/getRooms") == 0)
 	{
 		bsOut.Write((RakNet::MessageID)ID_GET_ROOMS);
@@ -526,6 +528,14 @@ void handleOutputRemote(const GameState* state, char* message)
 		bsOut.Write((RakNet::MessageID)ID_TEXT_CHAT);
 		bsOut.Write(message);
 		peer->Send(&bsOut, HIGH_PRIORITY, RELIABLE_ORDERED, 0, peer->GetGUIDFromIndex(0), false);	//JANK
+	}
+	else if (strcmp(message, "/create") != 0)
+	{
+		bsOut.Write((RakNet::MessageID)ID_TIMESTAMP);
+		bsOut.Write((RakNet::Time)RakNet::GetTime());
+		bsOut.Write((RakNet::MessageID)ID_CREATE_ROOM);
+		peer->Send(&bsOut, HIGH_PRIORITY, RELIABLE_ORDERED, 0, peer->GetGUIDFromIndex(0), false);
+
 	}
 
 	if (sizeof message > 0)
@@ -558,10 +568,9 @@ int main(void)
 	gs->peer->SetMaximumIncomingConnections(0);
 	gs->peer->Connect(SERVER_IP, SERVER_PORT, 0, 0);
 
-	gpro_battleship playerOne;
-	gpro_battleship playerTwo;
+	gpro_battleship currentBoard;
 
-	bool playerTurn = true;	//true = p1, false = p2
+	//bool playerTurn = true;	//true = p1, false = p2
 
 	//game loop
 	while (1)
@@ -572,11 +581,11 @@ int main(void)
 			break;
 		}
 		//input
-		handleInputLocal(gs, message, &initialized, &playerOne, &playerTwo, playerTurn);
+		handleInputLocal(gs, message, &initialized, &currentBoard);
 		//recieve and merge
-		handleRemoteInput(gs, &connected);
+		handleRemoteInput(gs, &connected, &currentBoard);
 		//update
-		handleUpdate(gs, &playerOne, &playerTwo);
+		handleUpdate(gs);
 		//package and send
 		
 		if (connected==true)
