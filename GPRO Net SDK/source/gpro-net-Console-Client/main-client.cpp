@@ -37,6 +37,7 @@
 #include "RakNet/BitStream.h"
 #include "RakNet/RakNetTypes.h"  // MessageID
 #include "RakNet/GetTime.h"
+#include <WinUser.h>
 
 //#include "gpro-net/gpro-net-common/gpro-net-console.h"
 //#define SERVER_PORT 60000
@@ -195,11 +196,12 @@ void handleInputLocal(GameState* state, char* msg, bool* init, gpro_battleship* 
 	
 	if (*init!=true)
 	{
-		/*
+		
 		printf("Enter username and hit 'enter' to log on \n");
 		fgets(msg, 512, stdin);
-		//printf("Your username is %s \n",msg);	//SET USERNAME ON SERVER, SEND TIME + MSG TO SERVER*/
-
+		strtok(msg, "\n");
+		//printf("Your username is %s \n",msg);	//SET USERNAME ON SERVER, SEND TIME + MSG TO SERVER
+		/*
 		gpro_battleship_reset(*p1);
 		gpro_battleship_reset(*p2);
 		
@@ -262,6 +264,7 @@ void handleInputLocal(GameState* state, char* msg, bool* init, gpro_battleship* 
 	
 	else
 	{
+		/*
 		int debug;
 		if (turn)
 		{
@@ -333,9 +336,10 @@ void handleInputLocal(GameState* state, char* msg, bool* init, gpro_battleship* 
 				}
 				turn = true;
 			}
-		}
-		//printf("Type message\n");
-		//fgets(msg, 512, stdin);
+		}*/
+		printf("Type message\n");
+		fgets(msg, 512, stdin);
+		strtok(msg, "\n");
 	}
 	//Keyboard, controller, etc
 }
@@ -504,13 +508,18 @@ void handleOutputRemote(const GameState* state, char* message)
 	RakNet::RakPeerInterface* peer = state->peer;
 	RakNet::BitStream bsOut;
 
-	if (strcmp(message,"/getUsers\n")==0)
+	if (strcmp(message,"/getUsers")==0)
 	{
 		//send request for all usernames
 		bsOut.Write((RakNet::MessageID)ID_USERNAMES_REQUEST);
 		peer->Send(&bsOut, HIGH_PRIORITY, RELIABLE_ORDERED, 0, peer->GetGUIDFromIndex(0), false);
 	}
-	else if (strcmp(message, "/update\n") != 0)
+	if (strcmp(message, "/getRooms") == 0)
+	{
+		bsOut.Write((RakNet::MessageID)ID_GET_ROOMS);
+		peer->Send(&bsOut, HIGH_PRIORITY, RELIABLE_ORDERED, 0, peer->GetGUIDFromIndex(0), false);
+	}
+	else if (strcmp(message, "/update") != 0)
 	{
 		bsOut.Write((RakNet::MessageID)ID_TIMESTAMP);
 		bsOut.Write((RakNet::Time)RakNet::GetTime());
@@ -535,20 +544,20 @@ int main(void)
 {
 	
 	const unsigned short SERVER_PORT = 7777;
-	const char SERVER_IP[] = "172.16.2.64";	//get fron VDI
+	const char SERVER_IP[] = "172.16.2.61";	//get fron VDI
 
 	GameState gs[1] = {0};
 
 	char message[512];
 	bool initialized = false;
 	bool connected = false;
-	/*
+	
 	gs->peer = RakNet::RakPeerInterface::GetInstance();
 	RakNet::SocketDescriptor sd;
 	gs->peer->Startup(1, &sd, 1);
 	gs->peer->SetMaximumIncomingConnections(0);
 	gs->peer->Connect(SERVER_IP, SERVER_PORT, 0, 0);
-*/
+
 	gpro_battleship playerOne;
 	gpro_battleship playerTwo;
 
@@ -557,20 +566,26 @@ int main(void)
 	//game loop
 	while (1)
 	{
+		if (GetAsyncKeyState(VK_ESCAPE))
+		{
+			printf("Closing\n");
+			break;
+		}
 		//input
 		handleInputLocal(gs, message, &initialized, &playerOne, &playerTwo, playerTurn);
 		//recieve and merge
-		//handleRemoteInput(gs, &connected);
+		handleRemoteInput(gs, &connected);
 		//update
 		handleUpdate(gs, &playerOne, &playerTwo);
 		//package and send
-		/*
+		
 		if (connected==true)
 		{
 			handleOutputRemote(gs, message);
-		}*/
+		}
 		//output
-		//handleOutputLocal(gs);
+		handleOutputLocal(gs);
+
 	}
 	
 

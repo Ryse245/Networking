@@ -184,7 +184,7 @@ int main(void)
 				//RakNet::BitStream bsIn(packet->data, packet->length, false);
 				//bsIn.IgnoreBytes(sizeof(RakNet::MessageID));
 				bsIn.Read(rs);
-				printf("%s\n", rs.C_String());
+				//printf("%s\n", rs.C_String());
 				for (int i = 0; i < MAX_CLIENTS; i++)
 				{
 					if (packet->systemAddress == clientAddresses[i])	//Client already "logged on"
@@ -193,6 +193,10 @@ int main(void)
 						bsOut.Write((RakNet::MessageID)ID_TEXT_CHAT);
 						bsOut.Write(rs);
 						peer->Send(&bsOut, HIGH_PRIORITY, RELIABLE_ORDERED, 0, packet->systemAddress, true);
+
+						printf("%s\n", rs.C_String());
+
+						/*
 						FILE* logfile = fopen("Z:\\textlog.txt", "a");	//For server, send to all
 						rs.AppendBytes(" Username: ", sizeof(" Username: "));
 						rs.AppendBytes(usernames[i].C_String(), sizeof(usernames[i].C_String()));
@@ -203,6 +207,7 @@ int main(void)
 						fprintf(logfile,"%i",(int)sentTime);
 						a = fputs("\n", logfile);
 						fclose(logfile);
+						*/
 						break;
 					}
 					else if (packet->systemAddress != clientAddresses[i] && clientAddresses[i]==RakNet::UNASSIGNED_SYSTEM_ADDRESS )	//New client
@@ -255,7 +260,7 @@ int main(void)
 
 				break;
 			}
-			case ID_GET_LOBBIES:
+			case ID_GET_ROOMS:
 			{
 				RakNet::BitStream bsOut;
 				RakNet::RakString roomList = "Rooms:\n";

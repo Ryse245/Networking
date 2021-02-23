@@ -36,7 +36,7 @@ enum GameMessages
 	ID_CREATE_ROOM,
 	ID_JOIN_ROOM,
 	ID_SETUP_BOARD,
-	ID_GET_LOBBIES
+	ID_GET_ROOMS
 };
 
 struct BattleShipOrder
