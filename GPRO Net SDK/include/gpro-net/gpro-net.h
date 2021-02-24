@@ -36,14 +36,28 @@ enum GameMessages
 	ID_CREATE_ROOM,
 	ID_JOIN_ROOM,
 	ID_SETUP_BOARD,
-	ID_GET_ROOMS
+	ID_GET_ROOMS,
+	ID_BS_HIT,
+	ID_BS_MISS
 };
-
+/*
 struct BattleShipOrder
 {
 	//MessageID bsID;
 	unsigned short xCoordinate;
 	unsigned short yCoordinate;
 };
-
+*/
+struct BattleShipSetup
+{
+	//RakNet::MessageID SetupID = ID_SETUP_BOARD;
+	char xCoords[17];
+	char yCoords[17];
+};
+struct BattleShipOrder
+{
+	//RakNet::MessageID OrderID;
+	unsigned char xCoordinate;
+	unsigned char yCoordinate;
+};
 #endif	// !_GPRO_NET_H_

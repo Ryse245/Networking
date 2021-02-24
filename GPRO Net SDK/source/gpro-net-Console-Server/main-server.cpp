@@ -54,12 +54,13 @@ enum class PlayerTurn
 	PLAYER_ONE,
 	PLAYER_TWO
 };
+
 class GameRoom
 {
 public:
-	int CreateRoom(RakNet::RakString playerUName);
-	int JoinRoom(RakNet::RakString playerUName);
-	void StartGame();
+	int CreateRoom(RakNet::RakString playerUName, RakNet::SystemAddress playerAddress);
+	int JoinRoom(RakNet::RakString playerUName, RakNet::SystemAddress playerAddress);
+	void StartGame(RakNet::RakPeerInterface* peer);
 	int UpdateGame(int xPos, int yPos);
 
 	bool GetCreatedRoom() {	return createdRoom;	}
@@ -68,6 +69,7 @@ public:
 
 	RakNet::RakString playerNames[2];
 	RakNet::RakString spectatorNames[8];
+	RakNet::SystemAddress playerAdresses[2];
 private:
 	gpro_battleship playerOne;
 	gpro_battleship playerTwo;
@@ -316,7 +318,7 @@ int main(void)
 						{
 							if (clientAddresses[j] == packet->systemAddress)
 							{
-								possibleRooms[i].CreateRoom(usernames[j]);
+								possibleRooms[i].CreateRoom(usernames[j], packet->systemAddress);
 								//possibleRooms[i].playerNames[0] = usernames[j];
 								break;
 							}
@@ -341,7 +343,7 @@ int main(void)
 					{
 						if (clientAddresses[i]==packet->systemAddress)
 						{
-							possibleRooms[requestedRoom].JoinRoom(usernames[i]);
+							possibleRooms[requestedRoom].JoinRoom(usernames[i], packet->systemAddress);
 							break;
 						}
 					}
@@ -358,7 +360,7 @@ int main(void)
 	{
 		if (possibleRooms[i].GetStartGame()==false)
 		{
-			possibleRooms[i].StartGame();
+			possibleRooms[i].StartGame(peer);
 		}
 	}
 	RakNet::RakPeerInterface::DestroyInstance(peer);
@@ -376,19 +378,21 @@ int main(int const argc, char const* const argv[])
 }
 */
 
-int GameRoom::CreateRoom(RakNet::RakString playerUName)
+int GameRoom::CreateRoom(RakNet::RakString playerUName, RakNet::SystemAddress playerAddress)
 {
 	playerNames[0] = playerUName;
+	playerAdresses[0] = playerAddress;
 	//Player now has "created" a lobby and joined it
 	createdRoom = true;
 	return 0;
 }
 
-int GameRoom::JoinRoom(RakNet::RakString playerUName)
+int GameRoom::JoinRoom(RakNet::RakString playerUName, RakNet::SystemAddress playerAddress)
 {
 	if (playerNames[1].IsEmpty())
 	{
 		playerNames[1] = playerUName;
+		playerAdresses[1] = playerAddress;
 	}
 	else
 	{
@@ -403,10 +407,13 @@ int GameRoom::JoinRoom(RakNet::RakString playerUName)
 	return 0;
 }
 
-void GameRoom::StartGame()
+void GameRoom::StartGame(RakNet::RakPeerInterface* peer)
 {
 	if (!playerNames[0].IsEmpty() && !playerNames[1].IsEmpty())
 	{
+		//Resets boards
+		gpro_battleship_reset(playerOne);
+		gpro_battleship_reset(playerTwo);
 		//Both players in game room, start game
 		for (int i = 0; i < 10; ++i)
 		{
@@ -418,6 +425,11 @@ void GameRoom::StartGame()
 		}
 
 		//SET BOARDS
+		//Send request for each players' board
+		RakNet::BitStream bsOut;
+		bsOut.Write((RakNet::MessageID)ID_SETUP_BOARD);
+		peer->Send(&bsOut, HIGH_PRIORITY, RELIABLE_ORDERED, 0, playerAdresses[0], false);
+		peer->Send(&bsOut, HIGH_PRIORITY, RELIABLE_ORDERED, 0, playerAdresses[1], false);
 
 
 		startGame = true;

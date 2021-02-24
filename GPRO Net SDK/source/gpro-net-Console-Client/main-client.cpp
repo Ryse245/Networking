@@ -64,6 +64,7 @@ struct GameState
 };
 
 
+
 /*
 // Commonalities in mesages
 // timestamp identifier (constant)
@@ -191,8 +192,9 @@ public:
 	}
 };
 */
-void handleInputLocal(GameState* state, char* msg, bool* init, gpro_battleship* currentBoard)
+void handleInputLocal(GameState* state, char* msg, bool* init, gpro_battleship* currentBoard, bool* settingUp, char (&xCoord)[17], char (&yCoord)[17])
 {
+	int debug;
 	char* debugChar;
 	if (*init!=true)
 	{
@@ -259,8 +261,7 @@ void handleInputLocal(GameState* state, char* msg, bool* init, gpro_battleship* 
 		printf(&test);*/
 
 		*init = true;
-	}
-	
+	}	
 	else
 	{
 		/*
@@ -336,14 +337,27 @@ void handleInputLocal(GameState* state, char* msg, bool* init, gpro_battleship* 
 				turn = true;
 			}
 		}*/
-		printf("Type message\n");
-		fgets(msg, 512, stdin);
-		debugChar = strtok(msg, "\n");
+		if (*settingUp == true)
+		{
+			//Input ship board coordinates into
+			printf("Input coordinates for all parts of ships (17 in total), formatted as such: 'X-Coordinate' [ENTER] 'Y-Coordinate' [ENTER]\n");
+			for (int i = 0; i < 17; i++)
+			{
+				debug = scanf("%c", &xCoord[i]);
+				debug = scanf("%c", &yCoord[i]);
+			}
+		}
+		else
+		{
+			printf("Type message\n");
+			fgets(msg, 512, stdin);
+			debugChar = strtok(msg, "\n");
+		}
 	}
 	//Keyboard, controller, etc
 }
 
-void handleRemoteInput(GameState* state, bool* connect, gpro_battleship* currentBoard)
+void handleRemoteInput(GameState* state, bool* connect, gpro_battleship* currentBoard, bool* settingUp)
 {
 	RakNet::RakPeerInterface* peer = state->peer;
 	RakNet::Packet* packet;
@@ -438,8 +452,8 @@ void handleRemoteInput(GameState* state, bool* connect, gpro_battleship* current
 			bsIn.IgnoreBytes(sizeof(RakNet::MessageID));
 			bsIn.Read(rs);
 			printf("%s\n", rs.C_String());
+			break;
 		}
-		break;
 		case ID_TEXT_CHAT:
 		{
 			//printf("Text message recieved \n");
@@ -459,7 +473,11 @@ void handleRemoteInput(GameState* state, bool* connect, gpro_battleship* current
 			printf("%s", rs.C_String());
 			break;
 		}
-
+		case ID_SETUP_BOARD:
+		{
+			*settingUp = true;
+			break;
+		}
 		default:
 			printf("Message with identifier %i has arrived.\n", msg);
 			break;
@@ -469,8 +487,35 @@ void handleRemoteInput(GameState* state, bool* connect, gpro_battleship* current
 	}
 }
 
-void handleUpdate(GameState* state)//, gpro_battleship* p1, gpro_battleship* p2)
+void handleUpdate(GameState* state, bool* settingUp, char(&xCoord)[17], char(&yCoord)[17], gpro_battleship* playerBoard)// gpro_battleship* p2)
 {
+	if (*settingUp == true)
+	{
+		//Assign ships to coordinates
+		for (int i = 0; i < 17; i++)
+		{
+			if (i < 2)	//From 0 to 1: Patrol boat (2 spots)
+			{
+				*playerBoard[xCoord[i]][yCoord[i]] += gpro_battleship_ship_p2;
+			}
+			else if (i < 5)	//From 2 to 4: Submarine (3 spots)
+			{
+				*playerBoard[xCoord[i]][yCoord[i]] += gpro_battleship_ship_s3;
+			}
+			else if (i < 8)	//From 5 to 7: Destroyer (3 spots)
+			{
+				*playerBoard[xCoord[i]][yCoord[i]] += gpro_battleship_ship_d3;
+			}
+			else if (i < 12) //From 8 to 11: Battleship (4 spots)
+			{
+				*playerBoard[xCoord[i]][yCoord[i]] += gpro_battleship_ship_b4;
+			}
+			else if (i < 17) //From 12 to 16: Carrier (5 spots)
+			{
+				*playerBoard[xCoord[i]][yCoord[i]] += gpro_battleship_ship_c5;
+			}
+		}
+	}
 	/*
 	//figure out what the state actually is
 	int shipCountP1 = 0;
@@ -502,7 +547,7 @@ void handleUpdate(GameState* state)//, gpro_battleship* p1, gpro_battleship* p2)
 	*/
 }
 
-void handleOutputRemote(const GameState* state, char* message)
+void handleOutputRemote(const GameState* state, char* message, bool* settingUp, char(&xCoord)[17], char(&yCoord)[17])
 {
 	//package and send state changes to server
 	
@@ -535,7 +580,18 @@ void handleOutputRemote(const GameState* state, char* message)
 		bsOut.Write((RakNet::Time)RakNet::GetTime());
 		bsOut.Write((RakNet::MessageID)ID_CREATE_ROOM);
 		peer->Send(&bsOut, HIGH_PRIORITY, RELIABLE_ORDERED, 0, peer->GetGUIDFromIndex(0), false);
+	}
 
+	if (*settingUp == true)
+	{
+		bsOut.Write((RakNet::MessageID)ID_SETUP_BOARD);
+		BattleShipSetup setup = {
+			*xCoord,
+			*yCoord
+		};
+		bsOut.Write(setup);
+		peer->Send(&bsOut, HIGH_PRIORITY, RELIABLE_ORDERED, 0, peer->GetGUIDFromIndex(0), false);
+		*settingUp = false;
 	}
 
 	if (sizeof message > 0)
@@ -559,8 +615,12 @@ int main(void)
 	GameState gs[1] = {0};
 
 	char message[512];
+
+	char xCoordinates[17];
+	char yCoordinates[17];
 	bool initialized = false;
 	bool connected = false;
+	bool settingUp = false;
 	
 	gs->peer = RakNet::RakPeerInterface::GetInstance();
 	RakNet::SocketDescriptor sd;
@@ -581,16 +641,16 @@ int main(void)
 			break;
 		}
 		//input
-		handleInputLocal(gs, message, &initialized, &currentBoard);
+		handleInputLocal(gs, message, &initialized, &currentBoard, &settingUp, xCoordinates, yCoordinates);
 		//recieve and merge
-		handleRemoteInput(gs, &connected, &currentBoard);
+		handleRemoteInput(gs, &connected, &currentBoard, &settingUp);
 		//update
-		handleUpdate(gs);
+		handleUpdate(gs,&settingUp, xCoordinates, yCoordinates, &currentBoard);
 		//package and send
 		
 		if (connected==true)
 		{
-			handleOutputRemote(gs, message);
+			handleOutputRemote(gs, message, &settingUp, xCoordinates, yCoordinates);
 		}
 		//output
 		handleOutputLocal(gs);
