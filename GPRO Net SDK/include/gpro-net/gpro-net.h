@@ -40,6 +40,9 @@ enum GameMessages
 	ID_BS_HIT,
 	ID_BS_MISS
 };
+
+const int BOAT_SPACES = 17;
+
 /*
 struct BattleShipOrder
 {

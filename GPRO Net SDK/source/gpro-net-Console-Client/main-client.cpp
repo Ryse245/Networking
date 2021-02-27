@@ -340,11 +340,10 @@ void handleInputLocal(GameState* state, char* msg, bool* init, gpro_battleship* 
 		if (*settingUp == true)
 		{
 			//Input ship board coordinates into
-			printf("Input coordinates for all parts of ships (17 in total), formatted as such: 'X-Coordinate' [ENTER] 'Y-Coordinate' [ENTER]\n");
+			printf("Input coordinates  from 0 to 9 for all parts of ships (17 in total), formatted as such: 'X-Coordinate' [ENTER] 'Y-Coordinate' [ENTER]\n");
 			for (int i = 0; i < 17; i++)
 			{
-				debug = scanf("%c", &xCoord[i]);
-				debug = scanf("%c", &yCoord[i]);
+				debug = scanf(" %c %c", &xCoord[i], &yCoord[i]);
 			}
 		}
 		else
@@ -475,7 +474,13 @@ void handleRemoteInput(GameState* state, bool* connect, gpro_battleship* current
 		}
 		case ID_SETUP_BOARD:
 		{
+			printf("Game Starting! Set up your board!\n");
 			*settingUp = true;
+			break;
+		}
+		case ID_JOIN_ROOM:
+		{
+
 			break;
 		}
 		default:
@@ -489,30 +494,33 @@ void handleRemoteInput(GameState* state, bool* connect, gpro_battleship* current
 
 void handleUpdate(GameState* state, bool* settingUp, char(&xCoord)[17], char(&yCoord)[17], gpro_battleship* playerBoard)// gpro_battleship* p2)
 {
-	if (*settingUp == true)
+	if (*settingUp == true && xCoord[0] != '\0')	//Since update is going to get called after remote input but before the next local input, need to check if the array is empty
 	{
 		//Assign ships to coordinates
 		for (int i = 0; i < 17; i++)
 		{
 			if (i < 2)	//From 0 to 1: Patrol boat (2 spots)
 			{
-				*playerBoard[xCoord[i]][yCoord[i]] += gpro_battleship_ship_p2;
+				*playerBoard[xCoord[i] - '0'][yCoord[i] - '0'] += gpro_battleship_ship_p2;
 			}
 			else if (i < 5)	//From 2 to 4: Submarine (3 spots)
 			{
-				*playerBoard[xCoord[i]][yCoord[i]] += gpro_battleship_ship_s3;
+				*playerBoard[xCoord[i] - '0'][yCoord[i] - '0'] += gpro_battleship_ship_s3;
 			}
 			else if (i < 8)	//From 5 to 7: Destroyer (3 spots)
 			{
-				*playerBoard[xCoord[i]][yCoord[i]] += gpro_battleship_ship_d3;
+				//*playerBoard[xCoord[i]][yCoord[i]] += gpro_battleship_ship_d3;
+				*playerBoard[xCoord[i] - '0'][yCoord[i] - '0'] += gpro_battleship_ship_d3;
 			}
 			else if (i < 12) //From 8 to 11: Battleship (4 spots)
 			{
-				*playerBoard[xCoord[i]][yCoord[i]] += gpro_battleship_ship_b4;
+				//*playerBoard[xCoord[i]][yCoord[i]] += gpro_battleship_ship_b4;
+				*playerBoard[xCoord[i] - '0'][yCoord[i] - '0'] += gpro_battleship_ship_b4;
 			}
 			else if (i < 17) //From 12 to 16: Carrier (5 spots)
 			{
-				*playerBoard[xCoord[i]][yCoord[i]] += gpro_battleship_ship_c5;
+				//*playerBoard[xCoord[i]][yCoord[i]] += gpro_battleship_ship_c5;
+				*playerBoard[xCoord[i] - '0'][yCoord[i] - '0'] += gpro_battleship_ship_c5;
 			}
 		}
 	}
@@ -582,7 +590,7 @@ void handleOutputRemote(const GameState* state, char* message, bool* settingUp, 
 		peer->Send(&bsOut, HIGH_PRIORITY, RELIABLE_ORDERED, 0, peer->GetGUIDFromIndex(0), false);
 	}
 
-	if (*settingUp == true)
+	if (*settingUp == true && xCoord[0] != '\0')	//Same as update
 	{
 		bsOut.Write((RakNet::MessageID)ID_SETUP_BOARD);
 		BattleShipSetup setup = {
@@ -621,6 +629,7 @@ int main(void)
 	bool initialized = false;
 	bool connected = false;
 	bool settingUp = false;
+	bool inRoom = false;
 	
 	gs->peer = RakNet::RakPeerInterface::GetInstance();
 	RakNet::SocketDescriptor sd;
@@ -630,7 +639,6 @@ int main(void)
 
 	gpro_battleship currentBoard;
 
-	//bool playerTurn = true;	//true = p1, false = p2
 
 	//game loop
 	while (1)

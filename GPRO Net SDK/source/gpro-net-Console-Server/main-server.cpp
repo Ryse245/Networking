@@ -70,9 +70,10 @@ public:
 	RakNet::RakString playerNames[2];
 	RakNet::RakString spectatorNames[8];
 	RakNet::SystemAddress playerAdresses[2];
-private:
+	//Not great, but whatever
 	gpro_battleship playerOne;
 	gpro_battleship playerTwo;
+private:
 
 	bool createdRoom = false;
 	bool startGame = false;
@@ -260,7 +261,23 @@ int main(void)
 			}
 			case ID_SETUP_BOARD:
 			{
-
+				BattleShipSetup boardSetup;
+				RakNet::BitStream bsIn(packet->data, packet->length, false);
+				bsIn.IgnoreBytes(sizeof(RakNet::MessageID));
+				bsIn.Read(boardSetup);
+				for (int i = 0; i < MAX_CLIENTS; i++)
+				{
+					if (packet->systemAddress == possibleRooms[i].playerAdresses[0])	//If the packet system address is the same as the player address at index 0 = If the placket address == player one of room
+					{
+						BoardSetup(&boardSetup, possibleRooms[i], 0);
+						break;
+					}
+					else if (packet->systemAddress == possibleRooms[i].playerAdresses[1])	//Packet address matches player 2 address
+					{
+						BoardSetup(&boardSetup, possibleRooms[i], 1);
+						break;
+					}
+				}
 				break;
 			}
 			case ID_BATTLESHIP:
@@ -439,6 +456,70 @@ void GameRoom::StartGame(RakNet::RakPeerInterface* peer)
 		printf("Not enough players to start.\n");
 	}
 }
+
+void BoardSetup(BattleShipSetup* setup, GameRoom& room, int playerIndex)
+{
+	//Making the player boards into an array could simplify this, but I don't care at this point
+	if (playerIndex == 0)
+	{
+		for (int j = 0; j < BOAT_SPACES; j++)
+		{
+			if (j < 2)	//From 0 to 1: Patrol boat (2 spots)
+			{
+				room.playerOne[setup->xCoords[j] - '0'][setup->yCoords[j] - '0'] += gpro_battleship_ship_p2;
+			}
+			else if (j < 5)	//From 2 to 4: Submarine (3 spots)
+			{
+				room.playerOne[setup->xCoords[j] - '0'][setup->yCoords[j] - '0'] += gpro_battleship_ship_s3;
+			}
+			else if (j < 8)	//From 5 to 7: Destroyer (3 spots)
+			{
+				//*playerBoard[xCoord[i]][yCoord[i]] += gpro_battleship_ship_d3;
+				room.playerOne[setup->xCoords[j] - '0'][setup->yCoords[j] - '0'] += gpro_battleship_ship_d3;
+			}
+			else if (j < 12) //From 8 to 11: Battleship (4 spots)
+			{
+				//*playerBoard[xCoord[i]][yCoord[i]] += gpro_battleship_ship_b4;
+				room.playerOne[setup->xCoords[j] - '0'][setup->yCoords[j] - '0'] += gpro_battleship_ship_b4;
+			}
+			else if (j < 17) //From 12 to 16: Carrier (5 spots)
+			{
+				//*playerBoard[xCoord[i]][yCoord[i]] += gpro_battleship_ship_c5;
+				room.playerOne[setup->xCoords[j] - '0'][setup->yCoords[j] - '0'] += gpro_battleship_ship_c5;
+			}
+		}
+	}
+	else if (playerIndex == 1)
+	{
+		for (int j = 0; j < BOAT_SPACES; j++)
+		{
+			if (j < 2)	//From 0 to 1: Patrol boat (2 spots)
+			{
+				room.playerTwo[setup->xCoords[j] - '0'][setup->yCoords[j] - '0'] += gpro_battleship_ship_p2;
+			}
+			else if (j < 5)	//From 2 to 4: Submarine (3 spots)
+			{
+				room.playerTwo[setup->xCoords[j] - '0'][setup->yCoords[j] - '0'] += gpro_battleship_ship_s3;
+			}
+			else if (j < 8)	//From 5 to 7: Destroyer (3 spots)
+			{
+				//*playerBoard[xCoord[i]][yCoord[i]] += gpro_battleship_ship_d3;
+				room.playerTwo[setup->xCoords[j] - '0'][setup->yCoords[j] - '0'] += gpro_battleship_ship_d3;
+			}
+			else if (j < 12) //From 8 to 11: Battleship (4 spots)
+			{
+				//*playerBoard[xCoord[i]][yCoord[i]] += gpro_battleship_ship_b4;
+				room.playerTwo[setup->xCoords[j] - '0'][setup->yCoords[j] - '0'] += gpro_battleship_ship_b4;
+			}
+			else if (j < 17) //From 12 to 16: Carrier (5 spots)
+			{
+				//*playerBoard[xCoord[i]][yCoord[i]] += gpro_battleship_ship_c5;
+				room.playerTwo[setup->xCoords[j] - '0'][setup->yCoords[j] - '0'] += gpro_battleship_ship_c5;
+			}
+		}
+	}
+}
+
 int GameRoom::UpdateGame(int xPos, int yPos)
 {
 	switch (currentTurn)
