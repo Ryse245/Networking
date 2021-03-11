@@ -58,6 +58,7 @@ namespace gproNet
 		//	Destructor.
 		virtual ~cRakNetClient();
 
+		bool bInGame;
 		// protected methods
 	protected:
 		// ProcessMessage
@@ -67,6 +68,7 @@ namespace gproNet
 		//		param msgID: message identifier
 		//		return: was message processed
 		virtual bool ProcessMessage(RakNet::BitStream& bitstream, RakNet::SystemAddress const sender, RakNet::Time const dtSendToReceive, RakNet::MessageID const msgID);
+		bool SendMessageToServer();
 	};
 
 }

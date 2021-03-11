@@ -62,6 +62,35 @@ namespace gproNet
 			//printf("A client lost the connection.\n");
 			return true;
 
+		case ID_GAME_CONNECT:
+		{
+			short chosenServer;
+			bitstream.Read(chosenServer);
+
+			//if game server is not full, assign system address to available player slot
+			gameServers[chosenServer].gamePlayers[0] = sender;
+
+			RakNet::BitStream bitstream_w;
+			bitstream_w.Write(RakNet::MessageID(ID_GAME_CONNECT));
+			peer->Send(&bitstream_w, MEDIUM_PRIORITY, UNRELIABLE_SEQUENCED, 0, sender, false);
+			break;
+		}
+		case ID_GAME_DISCONNECT:
+		{
+			for (size_t i = 0; i < MAX_CONNECTIONS; i++)
+			{
+				//if game server has player, remove player from game server
+				if (gameServers[i].gamePlayers[0] == sender)
+				{
+					gameServers[i].gamePlayers[0] = nullptr;
+				}
+			}
+
+			RakNet::BitStream bitstream_w;
+			bitstream_w.Write(RakNet::MessageID(ID_GAME_DISCONNECT));
+			peer->Send(&bitstream_w, MEDIUM_PRIORITY, UNRELIABLE_SEQUENCED, 0, sender, false);
+			break;
+		}
 			// test message
 		case ID_GPRO_MESSAGE_COMMON_BEGIN:
 		{
@@ -70,9 +99,19 @@ namespace gproNet
 			ReadTest(bitstream);
 			WriteTest(bitstream_w, "Hello client from server");
 			peer->Send(&bitstream_w, MEDIUM_PRIORITY, UNRELIABLE_SEQUENCED, 0, sender, false);
+			for (size_t i = 0; i < MAX_CONNECTIONS; i++)
+			{
+				if (players[i] == nullptr)
+				{
+					players[i] = sender;
+				}
+			}
 		}	return true;
 
 		}
 		return false;
+	}
+	void cRakNetGameServer::DummyGamePlay()
+	{
 	}
 }

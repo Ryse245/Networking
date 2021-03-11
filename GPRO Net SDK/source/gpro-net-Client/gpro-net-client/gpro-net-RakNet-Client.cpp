@@ -68,7 +68,16 @@ namespace gproNet
 		case ID_CONNECTION_LOST:
 			//printf("Connection lost.\n");
 			return true;
-
+		case ID_GAME_CONNECT:
+		{
+			bInGame = true;
+			break;
+		}
+		case ID_GAME_DISCONNECT:
+		{
+			bInGame = false;
+			break;
+		}
 		case ID_CONNECTION_REQUEST_ACCEPTED:
 		{
 			// client connects to server, send greeting
@@ -85,6 +94,29 @@ namespace gproNet
 		}	return true;
 
 		}
+		return false;
+	}
+	bool cRakNetClient::SendMessageToServer()
+	{
+		if (1)	//If the player wants to connect to a server
+		{
+			RakNet::BitStream bitstream_w;
+			bitstream_w.Write(RakNet::MessageID(ID_GAME_CONNECT));
+			//Get player chosen server input
+			//Add integer input to bitstream
+		
+			//Send server short to server
+			peer->Send(&bitstream_w, MEDIUM_PRIORITY, RELIABLE_ORDERED, 0, peer->GetSystemAddressFromIndex(0),false);
+		}
+		if (bInGame)	//If the player wants to disconnect
+		{
+			//Ask if the player wants to leave game; if true:
+			RakNet::BitStream bitstream_w;
+			bitstream_w.Write(RakNet::MessageID(ID_GAME_DISCONNECT));
+
+			peer->Send(&bitstream_w, MEDIUM_PRIORITY, RELIABLE_ORDERED, 0, peer->GetSystemAddressFromIndex(0), false);
+		}
+
 		return false;
 	}
 }

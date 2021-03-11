@@ -67,6 +67,21 @@ namespace gproNet
 		//		param msgID: message identifier
 		//		return: was message processed
 		virtual bool ProcessMessage(RakNet::BitStream& bitstream, RakNet::SystemAddress const sender, RakNet::Time const dtSendToReceive, RakNet::MessageID const msgID);
+
+		static const int MAX_CONNECTIONS = 10;
+
+		RakNet::SystemAddress players[MAX_CONNECTIONS];
+		cRakNetGameServer gameServers[MAX_CONNECTIONS];
+	};
+
+	struct cRakNetGameServer : public cRakNetManager
+	{
+	public:
+		static const int MAX_PLAYERS = 2;
+		RakNet::SystemAddress gamePlayers[MAX_PLAYERS];
+	private:
+		void DummyGamePlay();
+		//Any relevant game data
 	};
 
 }
