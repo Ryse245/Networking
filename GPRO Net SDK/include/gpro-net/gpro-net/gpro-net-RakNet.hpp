@@ -40,6 +40,94 @@
 
 namespace gproNet
 {
+	struct sSpatialPose
+	{
+		float scale[3];     // non-uniform scale
+		float rotate[3];    // orientation as Euler angles
+		float translate[3]; // translation
+
+		//Compression arrays
+		char scaleChar[3];
+		char rotChar[3];
+		char translateChar[3];
+
+		float maxScale = 0;
+		float maxTranslate = 0;
+
+		// read from stream
+		RakNet::BitStream& Read(RakNet::BitStream& bitstream)
+		{
+			bitstream.Read(scaleChar[0]);
+			bitstream.Read(scaleChar[1]);
+			bitstream.Read(scaleChar[2]);
+			bitstream.Read(rotChar[0]);
+			bitstream.Read(rotChar[1]);
+			bitstream.Read(rotChar[2]);
+			bitstream.Read(translateChar[0]);
+			bitstream.Read(translateChar[1]);
+			bitstream.Read(translateChar[2]);
+			bitstream.Read(maxScale);
+			bitstream.Read(maxTranslate);
+
+			for (size_t i = 0; i < 3; i++)
+			{
+				scale[i] = (scaleChar[i] / 511) * maxScale;
+				rotate[i] = (rotChar[i] / 127) * 3.1415;
+				translate[i] = (translateChar[i] / 127) * maxTranslate;
+			}
+
+			return bitstream;
+		}
+
+		// write to stream
+		RakNet::BitStream& Write(RakNet::BitStream& bitstream) const
+		{
+			for (size_t i = 0; i < 3; i++)
+			{
+				if (maxScale < scale[i])
+				{
+					maxScale = scale[i];	//Gets largest scale number
+				}
+				if (maxTranslate < abs(translate[i]))
+				{
+					maxTranslate = abs(translate[i]);	//Gets largest unsigned translate number
+				}
+			}
+
+
+			for (size_t i = 0; i < 3; i++)
+			{
+				scaleChar[i] = (scale[i] / maxScale) * 511;
+				rotChar[i] = (rotate[i] / 3.1415) * 127;
+				translateChar[i] = (translate[i] / maxTranslate) * 127;
+			}
+
+			
+			bitstream.Write(scaleChar[0]);
+			bitstream.Write(scaleChar[1]);
+			bitstream.Write(scaleChar[2]);
+			bitstream.Write(rotChar[0]);
+			bitstream.Write(rotChar[1]);
+			bitstream.Write(rotChar[2]);
+			bitstream.Write(translateChar[0]);
+			bitstream.Write(translateChar[1]);
+			bitstream.Write(translateChar[2]);
+			bitstream.Write(maxScale);
+			bitstream.Write(maxTranslate);
+			/*
+			bitstream.Write(scale[0]);
+			bitstream.Write(scale[1]);
+			bitstream.Write(scale[2]);
+			bitstream.Write(rotate[0]);
+			bitstream.Write(rotate[1]);
+			bitstream.Write(rotate[2]);
+			bitstream.Write(translate[0]);
+			bitstream.Write(translate[1]);
+			bitstream.Write(translate[2]);*/
+			return bitstream;
+		}
+	};
+
 	// eSettings
 	//	Enumeration of common settings.
 	enum eSettings
