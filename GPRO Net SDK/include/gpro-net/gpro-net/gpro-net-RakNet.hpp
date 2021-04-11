@@ -45,6 +45,9 @@ namespace gproNet
 	enum eSettings
 	{
 		SET_GPRO_SERVER_PORT = 7777,
+		SET_GPRO_MAX_CLIENTS = 8,
+		SET_GPRO_MAX_AGENTS_PER_CLIENTS = 16,
+		SET_GPRO_MAX_AGENTS = SET_GPRO_MAX_CLIENTS * SET_GPRO_MAX_AGENTS_PER_CLIENTS,
 	};
 
 
@@ -54,11 +57,49 @@ namespace gproNet
 	{
 		ID_GPRO_MESSAGE_COMMON_BEGIN = ID_USER_PACKET_ENUM,
 
-
+		ID_GPRO_MESSAGE_AGENT_UPDATE,
 
 		ID_GPRO_MESSAGE_COMMON_END
 	};
 
+	struct sInput
+	{
+		short ownerID, agentID;
+		//buttons
+		//bool btnUp, btnDown, btnLeft, btnRight;
+		//bool btnUpChange, btnDownChange, btnLeftChange, btnRightChange;	//For holding button
+		//Send a few frames worth of info (push in newest, pop out oldest?)
+		char btn[8]; //Using bitflags instead of bools, oh god
+
+		//joystick
+		//float xInput, yInput;
+	};
+
+	// structure sAgent
+	// Boids agent
+	struct sAgent
+	{
+		short ownerID, agentID;
+
+		float position[3];	//current state
+		float velocity[3];	//integrates into position
+		float acceleration[3];	//integrates into velocity
+		float force[3];	//total of cohesion, allignment, separation
+
+		static RakNet::BitStream& Write(RakNet::BitStream& bitstream, sAgent const& obj)
+			//RakNet::BitStream& Write(RakNet::BitStream& bsIn)
+		{
+			//done
+			return bitstream;
+		}
+		static RakNet::BitStream& Read(RakNet::BitStream& bitstream, sAgent& obj)
+			//RakNet::BitStream& Write(RakNet::BitStream& bsIn)
+		{
+			//need to actually set up reading
+			//done
+			return bitstream;
+		}
+	};
 
 	// cRakNetManager
 	//	Base class for RakNet peer management.
@@ -69,6 +110,13 @@ namespace gproNet
 		// peer
 		//	Pointer to RakNet peer instance.
 		RakNet::RakPeerInterface* peer;
+
+		// agents
+		//Array of agents in sim
+		//major index = client ID [0,7]
+		//minor index = agent ID [0,15]
+		sAgent agents[SET_GPRO_MAX_CLIENTS][SET_GPRO_MAX_AGENTS_PER_CLIENTS];
+		//sAgent agents[SET_GPRO_MAX_AGENTS];
 
 		// protected methods
 	protected:

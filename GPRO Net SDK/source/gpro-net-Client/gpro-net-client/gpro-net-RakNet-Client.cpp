@@ -29,6 +29,9 @@ namespace gproNet
 {
 	cRakNetClient::cRakNetClient()
 		: index(-1)
+		// Manages 16 of total 128 pots
+		//	"Range of owned pots" = [i*16,(i+1)*16) OR [i*16,(i+1)*16-1] (if i = 0, range is 0-15)
+		//		in a vector/matrix of objs
 	{
 		RakNet::SocketDescriptor sd;
 		char SERVER_IP[16] = "127.0.0.1";
@@ -89,7 +92,32 @@ namespace gproNet
 			if (sender == server && index < 0)
 				bitstream.Read(index);
 		}	return true;
+		case ID_GPRO_MESSAGE_AGENT_UPDATE:
+		{
+			//What the other peer sends as state
+			sAgent agent, tmp;
+			sAgent::Read(bitstream, agent);
 
+			//algorithm
+			//	->check distance between ours and server's
+			//	IF WITHIN THRESHOLD
+			//	->kinematic - position
+			//		->change in time
+			//	->1st order (Euler) - velocity
+			//	->lerp between our copy and server info
+			//		->bias/perference (local vs server)
+			//	IF TOO FAR
+			//	->if distance too far, snap ours to server's
+			//		->or just lerp with higher preference for server
+			agent = tmp;
+			if (1)
+			{
+				//simulate
+			}
+
+			//update our own state
+			agents[agent.ownerID][agent.agentID] = agent;
+		}	return true;
 			// test message
 		case ID_GPRO_MESSAGE_COMMON_END:
 		{
